@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "718234861040",
+    "project_id": "goodloop-a1a1c",
+    "storage_bucket": "goodloop-a1a1c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:718234861040:android:33771d1d2925bc60e77135",
+        "android_client_info": {
+          "package_name": "pl.goodloop.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "718234861040-36o387utirprq5ba84bs4svqd3t98tnn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCfarZlH6hdaLWCmugrCtxVxsNaPch3W5Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "718234861040-36o387utirprq5ba84bs4svqd3t98tnn.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
