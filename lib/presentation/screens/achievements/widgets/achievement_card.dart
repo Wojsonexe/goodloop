@@ -26,7 +26,7 @@ class AchievementCard extends StatelessWidget {
               border: Border.all(
                 color:
                     achievement.isUnlocked
-                        ? AppColors.primary.withOpacity(0.3)
+                        ? AppColors.primary.withValues(alpha: 0.3)
                         : Colors.grey[400]!,
                 width: 2,
               ),
@@ -39,7 +39,7 @@ class AchievementCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color:
                         achievement.isUnlocked
-                            ? AppColors.primary.withOpacity(0.1)
+                            ? AppColors.primary.withValues(alpha: 0.1)
                             : Colors.grey[300],
                     borderRadius: BorderRadius.circular(16),
                   ),

@@ -173,31 +173,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: const Text('Choose Theme'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _themeOption(context, ThemeMode.light, 'Light'),
-                _themeOption(context, ThemeMode.dark, 'Dark'),
-                _themeOption(context, ThemeMode.system, 'System'),
-              ],
-            ),
+            title: const Text('Select Theme'),
+            content: buildThemeSelector(context),
           ),
     );
   }
 
-  Widget _themeOption(BuildContext context, ThemeMode mode, String label) {
-    final currentMode = ref.watch(themeModeProvider);
-    return RadioListTile<ThemeMode>(
-      value: mode,
-      groupValue: currentMode,
-      title: Text(label),
-      onChanged: (value) {
-        if (value != null) {
-          ref.read(themeModeProvider.notifier).setThemeMode(value);
+  Widget buildThemeSelector(BuildContext context) {
+    final current = ref.watch(themeModeProvider);
+
+    // The RadioGroup now handles the current value and the onChanged callback
+    return RadioGroup<ThemeMode>(
+      groupValue: current,
+      onChanged: (ThemeMode? newValue) {
+        if (newValue != null) {
+          ref.read(themeModeProvider.notifier).setThemeMode(newValue);
           Navigator.pop(context);
         }
       },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildThemeRadio(title: 'Light', value: ThemeMode.light),
+          _buildThemeRadio(title: 'Dark', value: ThemeMode.dark),
+          _buildThemeRadio(title: 'System', value: ThemeMode.system),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildThemeRadio({required String title, required ThemeMode value}) {
+    return RadioListTile<ThemeMode>(
+      title: Text(title),
+      value: value,
+      contentPadding: EdgeInsets.zero, // Makes it fit better in dialogs
     );
   }
 

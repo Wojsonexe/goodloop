@@ -42,6 +42,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     if (user == null || task == null) return;
 
+    if (!mounted) return;
     final reflection = await showDialog<String>(
       context: context,
       builder:
@@ -114,9 +115,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           SafeArea(
             child: userAsync.when(
               data: (user) {
-                if (user == null)
+                if (user == null) {
                   return const Center(child: Text('User not found'));
-
+                }
                 return Column(
                   children: [
                     // Header
@@ -140,7 +141,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               Text(
                                 user.level,
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: Colors.white.withValues(alpha: 0.9),
                                   fontSize: 16,
                                 ),
                               ),
@@ -175,7 +176,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             child: Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Column(
@@ -196,7 +197,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   Text(
                                     'Points',
                                     style: TextStyle(
-                                      color: Colors.white.withOpacity(0.8),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.8,
+                                      ),
                                       fontSize: 12,
                                     ),
                                   ),

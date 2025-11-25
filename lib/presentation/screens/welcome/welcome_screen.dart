@@ -28,7 +28,7 @@ class WelcomeScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(32),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 20,
                         offset: const Offset(0, 10),
                       ),
@@ -56,7 +56,7 @@ class WelcomeScreen extends StatelessWidget {
                 Text(
                   'Daily Acts of Kindness',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                   ),
                   textAlign: TextAlign.center,
                 ).animate().fadeIn(delay: 600.ms),
@@ -66,7 +66,7 @@ class WelcomeScreen extends StatelessWidget {
                 Text(
                   'Make the world better, one small act at a time',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                   ),
                   textAlign: TextAlign.center,
                 ).animate().fadeIn(delay: 800.ms),

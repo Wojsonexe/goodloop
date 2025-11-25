@@ -41,7 +41,7 @@ class CustomProgressIndicator extends StatelessWidget {
           child: LinearProgressIndicator(
             value: progress,
             minHeight: 10,
-            backgroundColor: AppColors.primary.withOpacity(0.1),
+            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
             valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
           ),
         ),
