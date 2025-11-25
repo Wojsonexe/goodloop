@@ -35,24 +35,22 @@ class ProfileScreen extends ConsumerWidget {
                 // Avatar
                 CircleAvatar(
                   radius: 60,
-                  backgroundImage:
-                      user.photoUrl != null
-                          ? NetworkImage(user.photoUrl!)
-                          : null,
-                  child:
-                      user.photoUrl == null
-                          ? const Icon(Icons.person, size: 60)
-                          : null,
+                  backgroundImage: user.photoURL != null
+                      ? NetworkImage(user.photoURL!)
+                      : null,
+                  child: user.photoURL == null
+                      ? const Icon(Icons.person, size: 60)
+                      : null,
                 ),
 
                 const SizedBox(height: 16),
 
                 // Name
                 Text(
-                  user.displayName ?? 'Anonymous',
+                  user.displayName,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
 
                 const SizedBox(height: 8),
@@ -68,7 +66,7 @@ class ProfileScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    user.level,
+                    'Level ${user.level}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -85,21 +83,21 @@ class ProfileScreen extends ConsumerWidget {
                   crossAxisCount: 2,
                   mainAxisSpacing: 16,
                   crossAxisSpacing: 16,
-                  childAspectRatio: 1.5,
+                  childAspectRatio: 1.3,
                   children: [
                     StatCard(
                       icon: '⭐',
-                      value: '${user.points}',
+                      value: '${user.totalPoints}',
                       label: 'Total Points',
                     ),
                     StatCard(
                       icon: '🔥',
-                      value: '${user.streak}',
+                      value: '${user.streakDays}',
                       label: 'Current Streak',
                     ),
                     StatCard(
                       icon: '✅',
-                      value: '${user.completedTasks.length}',
+                      value: '${user.completedTasks}',
                       label: 'Tasks Done',
                     ),
                     StatCard(

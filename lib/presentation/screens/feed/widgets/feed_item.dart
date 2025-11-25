@@ -5,8 +5,9 @@ import '../../../../data/models/feed_item_model.dart';
 
 class FeedItemWidget extends StatelessWidget {
   final FeedItemModel item;
+  final String? taskText; // ← PRZYJMUJEMY TEKST TASKA JEŚLI POST ZADANIOWY
 
-  const FeedItemWidget({super.key, required this.item});
+  const FeedItemWidget({super.key, required this.item, this.taskText});
 
   @override
   Widget build(BuildContext context) {
@@ -23,25 +24,25 @@ class FeedItemWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // === HEADER ===
           Row(
             children: [
-              CircleAvatar(
-                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                child: const Icon(Icons.person, color: AppColors.primary),
-              ),
+              _buildAvatar(),
               const SizedBox(width: 12),
+
+              // Username + date
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Anonymous',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                    Text(
+                      item.userName,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     Text(
                       DateFormat(
                         'MMM dd, yyyy • hh:mm a',
-                      ).format(item.timestamp),
+                      ).format(item.createdAt),
                       style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -52,8 +53,11 @@ class FeedItemWidget extends StatelessWidget {
               ),
             ],
           ),
+
           const SizedBox(height: 12),
-          if (item.taskText != null) ...[
+
+          // === TASK BOX ===
+          if (taskText != null) ...[
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -66,7 +70,7 @@ class FeedItemWidget extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      item.taskText!,
+                      taskText!,
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,
@@ -79,8 +83,38 @@ class FeedItemWidget extends StatelessWidget {
             ),
             const SizedBox(height: 12),
           ],
+
+          // === POST IMAGE ===
+          if (item.imageUrl != null && item.imageUrl!.isNotEmpty) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(item.imageUrl!, fit: BoxFit.cover),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // === POST TEXT ===
           Text(item.content, style: const TextStyle(fontSize: 15, height: 1.5)),
         ],
+      ),
+    );
+  }
+
+  // === AVATAR BUILDER ===
+  Widget _buildAvatar() {
+    if (item.userPhotoUrl != null && item.userPhotoUrl!.isNotEmpty) {
+      return CircleAvatar(
+        radius: 20,
+        backgroundImage: NetworkImage(item.userPhotoUrl!),
+      );
+    }
+
+    return CircleAvatar(
+      radius: 20,
+      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+      child: Text(
+        item.userName.isNotEmpty ? item.userName[0].toUpperCase() : '?',
+        style: const TextStyle(color: AppColors.primary),
       ),
     );
   }

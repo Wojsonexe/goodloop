@@ -1,99 +1,142 @@
 import "package:cloud_firestore/cloud_firestore.dart";
 
 class UserModel {
-  final String id;
+  final String uid;
   final String email;
-  final String? displayName;
-  final String? photoUrl;
-  final int points;
-  final int streak;
-  final String? lastTaskDate;
-  final List<String> completedTasks;
-  final List<String> achievements;
-  final String? currentTask;
-  final bool taskCompletedToday;
+  final String displayName;
+  final String? photoURL;
+  final int completedTasks;
+  final int streakDays;
+  final int totalPoints;
   final DateTime createdAt;
+  final DateTime lastActive;
+  final List<String> achievements;
+  final int level;
+  final DateTime? lastTaskCompletedDate;
 
   UserModel({
-    required this.id,
+    required this.uid,
     required this.email,
-    this.displayName,
-    this.photoUrl,
-    this.points = 0,
-    this.streak = 0,
-    this.lastTaskDate,
-    this.completedTasks = const [],
-    this.achievements = const [],
-    this.currentTask,
-    this.taskCompletedToday = false,
+    required this.displayName,
+    this.photoURL,
+    this.completedTasks = 0,
+    this.streakDays = 0,
+    this.totalPoints = 0,
     required this.createdAt,
+    required this.lastActive,
+    required this.level,
+    this.achievements = const [],
+    this.lastTaskCompletedDate,
   });
 
-  String get level {
-    if (points < 100) return 'Starter';
-    if (points < 300) return 'Helper';
-    if (points < 500) return 'Inspirator';
-    return 'Guardian';
+  // ✅ DODANE GETTERY DO KOMPATYBILNOŚCI
+  String get id => uid;
+  String? get photoUrl => photoURL;
+  int get streak => streakDays;
+  int get points => totalPoints;
+
+  // ✅ Sprawdzenie czy zadanie zostało ukończone dzisiaj
+  bool get taskCompletedToday {
+    if (lastTaskCompletedDate == null) return false;
+    final now = DateTime.now();
+    final lastCompleted = lastTaskCompletedDate!;
+    return now.year == lastCompleted.year &&
+        now.month == lastCompleted.month &&
+        now.day == lastCompleted.day;
   }
 
-  factory UserModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory UserModel.fromMap(Map<String, dynamic> map) {
     return UserModel(
-      id: doc.id,
-      email: data['email'] ?? '',
-      displayName: data['displayName'],
-      photoUrl: data['photoUrl'],
-      points: data['points'] ?? 0,
-      streak: data['streak'] ?? 0,
-      lastTaskDate: data['lastTaskDate'],
-      completedTasks: List<String>.from(data['completedTasks'] ?? []),
-      achievements: List<String>.from(data['achievements'] ?? []),
-      currentTask: data['currentTask'],
-      taskCompletedToday: data['taskCompletedToday'] ?? false,
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      uid: map['uid'] as String? ?? '',
+      email: map['email'] as String? ?? '',
+      displayName: map['displayName'] as String? ?? '',
+      photoURL: map['photoURL'] as String?,
+      completedTasks: (map['completedTasks'] as num?)?.toInt() ?? 0,
+      streakDays: (map['streakDays'] as num?)?.toInt() ?? 0,
+      totalPoints: (map['totalPoints'] as num?)?.toInt() ?? 0,
+      createdAt: _parseTimestamp(map['createdAt']),
+      lastActive: _parseTimestamp(map['lastActive']),
+      achievements: _parseStringList(map['achievements']),
+      level: (map['level'] as num?)?.toInt() ?? 1,
+      lastTaskCompletedDate:
+          map['lastTaskCompletedDate'] != null
+              ? _parseTimestamp(map['lastTaskCompletedDate'])
+              : null,
     );
   }
 
-  Map<String, dynamic> toFirestore() {
+  static DateTime _parseTimestamp(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+    return DateTime.now();
+  }
+
+  static List<String> _parseStringList(dynamic value) {
+    if (value == null) return [];
+    if (value is List) {
+      return value
+          .where((item) => item != null)
+          .map((item) => item.toString())
+          .toList();
+    }
+    return [];
+  }
+
+  Map<String, dynamic> toMap() {
     return {
+      'uid': uid,
       'email': email,
       'displayName': displayName,
-      'photoUrl': photoUrl,
-      'points': points,
-      'streak': streak,
-      'lastTaskDate': lastTaskDate,
+      'photoURL': photoURL,
       'completedTasks': completedTasks,
-      'achievements': achievements,
-      'currentTask': currentTask,
-      'taskCompletedToday': taskCompletedToday,
+      'streakDays': streakDays,
+      'totalPoints': totalPoints,
       'createdAt': Timestamp.fromDate(createdAt),
+      'lastActive': Timestamp.fromDate(lastActive),
+      'achievements': achievements,
+      'level': level,
+      'lastTaskCompletedDate':
+          lastTaskCompletedDate != null
+              ? Timestamp.fromDate(lastTaskCompletedDate!)
+              : null,
     };
   }
 
   UserModel copyWith({
+    String? uid,
+    String? email,
     String? displayName,
-    String? photoUrl,
-    int? points,
-    int? streak,
-    String? lastTaskDate,
-    List<String>? completedTasks,
+    String? photoURL,
+    int? completedTasks,
+    int? streakDays,
+    int? totalPoints,
+    int? level,
+    DateTime? createdAt,
+    DateTime? lastActive,
     List<String>? achievements,
-    String? currentTask,
-    bool? taskCompletedToday,
+    DateTime? lastTaskCompletedDate,
   }) {
     return UserModel(
-      id: id,
-      email: email,
+      uid: uid ?? this.uid,
+      email: email ?? this.email,
       displayName: displayName ?? this.displayName,
-      photoUrl: photoUrl ?? this.photoUrl,
-      points: points ?? this.points,
-      streak: streak ?? this.streak,
-      lastTaskDate: lastTaskDate ?? this.lastTaskDate,
+      photoURL: photoURL ?? this.photoURL,
       completedTasks: completedTasks ?? this.completedTasks,
+      streakDays: streakDays ?? this.streakDays,
+      totalPoints: totalPoints ?? this.totalPoints,
+      level: level ?? this.level,
+      createdAt: createdAt ?? this.createdAt,
+      lastActive: lastActive ?? this.lastActive,
       achievements: achievements ?? this.achievements,
-      currentTask: currentTask ?? this.currentTask,
-      taskCompletedToday: taskCompletedToday ?? this.taskCompletedToday,
-      createdAt: createdAt,
+      lastTaskCompletedDate:
+          lastTaskCompletedDate ?? this.lastTaskCompletedDate,
     );
+  }
+
+  @override
+  String toString() {
+    return 'UserModel(uid: $uid, email: $email, displayName: $displayName)';
   }
 }

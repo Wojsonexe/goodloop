@@ -1,83 +1,155 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:goodloop/logger.dart';
 import '../models/user_model.dart';
 
 class UserRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Stream<UserModel?> getUserStream(String userId) {
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .snapshots()
-        .map((doc) => doc.exists ? UserModel.fromFirestore(doc) : null);
-  }
-
-  Future<UserModel?> getUser(String userId) async {
-    final doc = await _firestore.collection('users').doc(userId).get();
-    return doc.exists ? UserModel.fromFirestore(doc) : null;
-  }
+  CollectionReference get _usersCollection => _firestore.collection('users');
 
   Future<void> createUser(UserModel user) async {
-    await _firestore.collection('users').doc(user.id).set(user.toFirestore());
+    try {
+      await _usersCollection.doc(user.uid).set(user.toMap());
+      logger.i('✅ User created: ${user.uid}');
+    } catch (e) {
+      logger.e('❌ Error creating user: $e');
+      rethrow;
+    }
   }
 
-  Future<void> updateUser(String userId, Map<String, dynamic> data) async {
-    await _firestore.collection('users').doc(userId).update(data);
+  Future<UserModel?> getUser(String uid) async {
+    try {
+      final doc = await _usersCollection.doc(uid).get();
+
+      if (!doc.exists) {
+        logger.w('⚠️ User document does not exist: $uid');
+        return null;
+      }
+
+      final data = doc.data();
+
+      if (data == null) {
+        logger.w('⚠️ User document data is null: $uid');
+        return null;
+      }
+
+      if (data is! Map<String, dynamic>) {
+        logger.e('❌ User document data is not a Map: ${data.runtimeType}');
+        return null;
+      }
+
+      return UserModel.fromMap(data);
+    } catch (e) {
+      logger.e('❌ Error getting user: $e');
+      return null;
+    }
   }
 
-  Future<void> completeTask(String userId, String taskId, int points) async {
-    final userRef = _firestore.collection('users').doc(userId);
-    final userDoc = await userRef.get();
-    final user = UserModel.fromFirestore(userDoc);
+  Stream<UserModel?> getUserStream(String uid) {
+    return _usersCollection.doc(uid).snapshots().map((snapshot) {
+      if (!snapshot.exists) {
+        logger.w('⚠️ User snapshot does not exist: $uid');
+        return null;
+      }
 
-    final today = DateTime.now().toIso8601String().split('T')[0];
-    final yesterday =
-        DateTime.now()
-            .subtract(const Duration(days: 1))
-            .toIso8601String()
-            .split('T')[0];
+      final data = snapshot.data();
 
-    int newStreak = user.streak;
-    if (user.lastTaskDate == yesterday) {
-      newStreak++;
-    } else if (user.lastTaskDate != today) {
-      newStreak = 1;
-    }
+      if (data == null) {
+        logger.w('⚠️ User snapshot data is null: $uid');
+        return null;
+      }
 
-    final completedTasks = [...user.completedTasks, taskId];
-    final newPoints = user.points + points;
+      if (data is! Map<String, dynamic>) {
+        logger.e('❌ User snapshot data is not a Map: ${data.runtimeType}');
+        return null;
+      }
 
-    // Check for new achievements
-    final achievements = List<String>.from(user.achievements);
-    if (!achievements.contains('first_task') && completedTasks.length == 1) {
-      achievements.add('first_task');
-    }
-    if (!achievements.contains('streak_3') && newStreak >= 3) {
-      achievements.add('streak_3');
-    }
-    if (!achievements.contains('streak_7') && newStreak >= 7) {
-      achievements.add('streak_7');
-    }
-    if (!achievements.contains('tasks_10') && completedTasks.length >= 10) {
-      achievements.add('tasks_10');
-    }
-    if (!achievements.contains('tasks_50') && completedTasks.length >= 50) {
-      achievements.add('tasks_50');
-    }
-    if (!achievements.contains('points_100') && newPoints >= 100) {
-      achievements.add('points_100');
-    }
-    if (!achievements.contains('points_500') && newPoints >= 500) {
-      achievements.add('points_500');
-    }
-
-    await userRef.update({
-      'points': newPoints,
-      'streak': newStreak,
-      'lastTaskDate': today,
-      'completedTasks': completedTasks,
-      'achievements': achievements,
-      'taskCompletedToday': true,
+      return UserModel.fromMap(data);
     });
+  }
+
+  Future<void> updateUser(String uid, Map<String, dynamic> updates) async {
+    try {
+      await _usersCollection.doc(uid).update({
+        ...updates,
+        'lastActive': FieldValue.serverTimestamp(),
+      });
+      logger.i('✅ User updated: $uid');
+    } catch (e) {
+      logger.e('❌ Error updating user: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> incrementCompletedTasks(String uid, int points) async {
+    try {
+      await _usersCollection.doc(uid).update({
+        'completedTasks': FieldValue.increment(1),
+        'totalPoints': FieldValue.increment(points),
+        'lastActive': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      logger.e('❌ Error incrementing tasks: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> updateStreak(String uid, int days) async {
+    try {
+      await _usersCollection.doc(uid).update({
+        'streakDays': days,
+        'lastActive': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      logger.e('❌ Error updating streak: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> addAchievement(String uid, String achievementId) async {
+    try {
+      await _usersCollection.doc(uid).update({
+        'achievements': FieldValue.arrayUnion([achievementId]),
+        'lastActive': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      logger.e('❌ Error adding achievement: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<UserModel>> getTopUsers({int limit = 10}) async {
+    try {
+      final query =
+          await _usersCollection
+              .orderBy('totalPoints', descending: true)
+              .limit(limit)
+              .get();
+
+      return query.docs
+          .map((doc) {
+            final data = doc.data();
+            if (data is Map<String, dynamic>) {
+              return UserModel.fromMap(data);
+            }
+            return null;
+          })
+          .where((user) => user != null)
+          .cast<UserModel>()
+          .toList();
+    } catch (e) {
+      logger.e('❌ Error getting top users: $e');
+      return [];
+    }
+  }
+
+  Future<void> deleteUser(String uid) async {
+    try {
+      await _usersCollection.doc(uid).delete();
+      logger.i('✅ User deleted: $uid');
+    } catch (e) {
+      logger.e('❌ Error deleting user: $e');
+      rethrow;
+    }
   }
 }

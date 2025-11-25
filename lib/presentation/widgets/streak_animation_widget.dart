@@ -107,8 +107,8 @@ class _StreakAnimationWidgetState extends State<StreakAnimationWidget>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    color.withOpacity(0.3),
-                    color.withOpacity(0.1),
+                    color.withValues(alpha: 0.3),
+                    color.withValues(alpha: 0.1),
                     Colors.transparent,
                   ],
                 ),
@@ -127,9 +127,9 @@ class _StreakAnimationWidgetState extends State<StreakAnimationWidget>
                           shape: BoxShape.circle,
                           gradient: SweepGradient(
                             colors: [
-                              color.withOpacity(0.0),
-                              color.withOpacity(0.5),
-                              color.withOpacity(0.0),
+                              color.withValues(alpha: 0.0),
+                              color.withValues(alpha: 0.5),
+                              color.withValues(alpha: 0.0),
                             ],
                           ),
                         ),
@@ -147,7 +147,7 @@ class _StreakAnimationWidgetState extends State<StreakAnimationWidget>
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: color.withOpacity(0.5),
+                            color: color.withValues(alpha: 0.5),
                             blurRadius: 20,
                             spreadRadius: 5,
                           ),
@@ -175,7 +175,7 @@ class _StreakAnimationWidgetState extends State<StreakAnimationWidget>
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
+                            color: Colors.black.withValues(alpha: 0.2),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -247,7 +247,7 @@ class StreakDetailsDialog extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: _getStreakColor().withOpacity(0.1),
+                color: _getStreakColor().withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -331,7 +331,7 @@ class StreakDetailsDialog extends StatelessWidget {
                   decoration: BoxDecoration(
                     color:
                         isAchieved
-                            ? _getStreakColor().withOpacity(0.2)
+                            ? _getStreakColor().withValues(alpha: 0.2)
                             : Colors.grey.shade200,
                     shape: BoxShape.circle,
                     border: Border.all(

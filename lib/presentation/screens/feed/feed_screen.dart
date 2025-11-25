@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:goodloop/core/constants/app_colors.dart';
-import 'package:goodloop/domain/providers/task_provider.dart';
+import 'package:goodloop/data/models/feed_item_model.dart';
+import 'package:goodloop/data/repositories/feed_repository.dart';
 
 import 'widgets/feed_item.dart';
 
-final feedStreamProvider = StreamProvider((ref) {
-  return ref.watch(feedRepositoryProvider).getFeedStream();
+final feedStreamProvider = StreamProvider<List<FeedItemModel>>((ref) {
+  final repository = ref.watch(feedRepositoryProvider);
+  return repository.getFeedStream();
 });
 
 class FeedScreen extends ConsumerWidget {
@@ -49,9 +51,10 @@ class FeedScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(16),
             itemCount: feedItems.length,
             itemBuilder: (context, index) {
+              final item = feedItems[index];
               return Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: FeedItemWidget(item: feedItems[index]),
+                child: FeedItemWidget(item: item),
               );
             },
           );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:confetti/confetti.dart';
 import 'package:go_router/go_router.dart';
+import 'package:goodloop/data/models/task_model.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../domain/providers/auth_provider.dart';
 import '../../../domain/providers/task_provider.dart';
@@ -36,13 +37,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.dispose();
   }
 
-  Future<void> _completeTask() async {
+  Future<void> _completeTask(TaskModel task) async {
     final user = await ref.read(currentUserProvider.future);
-    final task = await ref.read(currentTaskProvider.future);
 
-    if (user == null || task == null) return;
-
+    if (user == null) return;
     if (!mounted) return;
+
     final reflection = await showDialog<String>(
       context: context,
       builder:
@@ -80,22 +80,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
 
     if (reflection == null) return;
-
     await ref
-        .read(taskControllerProvider.notifier)
-        .completeTask(
-          user.id,
-          task.id,
-          task.pointsValue,
-          reflection.isEmpty ? null : reflection,
-        );
+        .read(taskControllerProvider(user.id).notifier)
+        .completeTask(task.id, task.points);
 
     if (!mounted) return;
     _confettiController.play();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('🎉 +${task.pointsValue} points! Amazing job!'),
+        content: Text('🎉 +${task.points} points! Amazing job!'),
         backgroundColor: AppColors.success,
       ),
     );
@@ -104,7 +98,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final userAsync = ref.watch(currentUserProvider);
-    final taskAsync = ref.watch(currentTaskProvider);
+    final activeTaskAsync = ref.watch(activeTasksProvider);
 
     return Scaffold(
       body: Stack(
@@ -120,7 +114,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 }
                 return Column(
                   children: [
-                    // Header
+                    // Header (User Profile)
                     Padding(
                       padding: const EdgeInsets.all(24),
                       child: Row(
@@ -130,7 +124,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Hello, ${user.displayName ?? "Friend"}! 👋',
+                                'Hello, ${user.displayName}! 👋',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 24,
@@ -139,7 +133,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                user.level,
+                                '${user.level}',
                                 style: TextStyle(
                                   color: Colors.white.withValues(alpha: 0.9),
                                   fontSize: 16,
@@ -213,7 +207,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Main Content
+                    // Main Content (Task Card)
                     Expanded(
                       child: Container(
                         decoration: BoxDecoration(
@@ -222,53 +216,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             top: Radius.circular(32),
                           ),
                         ),
-                        child: taskAsync.when(
-                          data: (task) {
-                            if (task == null) {
-                              return const Center(
-                                child: Text('Loading today\'s task...'),
-                              );
+                        // ✅ ZMIANA: Używamy activeTasksAsync zamiast taskAsync
+                        child: activeTaskAsync.when(
+                          data: (tasks) {
+                            // Sprawdzamy, czy użytkownik już wykonał zadanie dzisiaj
+                            if (user.taskCompletedToday) {
+                              return _buildCompletedView(context);
                             }
 
-                            if (user.taskCompletedToday) {
-                              return Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(24),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Text(
-                                        '✨',
-                                        style: TextStyle(fontSize: 80),
-                                      ),
-                                      const SizedBox(height: 24),
-                                      Text(
-                                        'Great Job!',
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.headlineMedium?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'You\'ve completed today\'s task',
-                                        style:
-                                            Theme.of(
-                                              context,
-                                            ).textTheme.bodyLarge,
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      const SizedBox(height: 32),
-                                      CustomButton(
-                                        onPressed: () => context.push('/feed'),
-                                        child: const Text(
-                                          'View Community Feed',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                            // Pobieramy pierwsze zadanie z listy
+                            final currentTask =
+                                tasks.isEmpty ? null : tasks.first;
+
+                            if (currentTask == null) {
+                              return const Center(
+                                child: Text('No active tasks for today!'),
                               );
                             }
 
@@ -285,16 +247,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         ?.copyWith(fontWeight: FontWeight.bold),
                                   ),
                                   const SizedBox(height: 16),
-                                  TaskCard(task: task),
+                                  TaskCard(task: currentTask),
                                   const SizedBox(height: 24),
                                   CustomButton(
-                                    onPressed: _completeTask,
+                                    // ✅ Przekazujemy zadanie do funkcji
+                                    onPressed: () => _completeTask(currentTask),
                                     child: const Text('Mark as Complete'),
                                   ),
                                   const SizedBox(height: 16),
                                   CustomProgressIndicator(
-                                    current: user.completedTasks.length,
-                                    total: 100,
+                                    current: user.completedTasks,
+                                    total: 100, // Tu możesz wstawić cel poziomu
                                   ),
                                 ],
                               ),
@@ -318,7 +281,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-          // Confetti
+          // Confetti Overlay
           Align(
             alignment: Alignment.topCenter,
             child: ConfettiWidget(
@@ -364,6 +327,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: 'Settings',
           ),
         ],
+      ),
+    );
+  }
+
+  // Wydzielony widok "Gratulacje" dla czystości kodu
+  Widget _buildCompletedView(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('✨', style: TextStyle(fontSize: 80)),
+            const SizedBox(height: 24),
+            Text(
+              'Great Job!',
+              style: Theme.of(
+                context,
+              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'You\'ve completed today\'s task',
+              style: Theme.of(context).textTheme.bodyLarge,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            CustomButton(
+              onPressed: () => context.push('/feed'),
+              child: const Text('View Community Feed'),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -20,9 +20,7 @@ class AchievementsScreen extends ConsumerWidget {
             return const Center(child: Text('User not found'));
           }
 
-          final achievements = AchievementModel.getAllAchievements(
-            user.achievements,
-          );
+          final achievements = AchievementModel.getAllAchievements();
 
           return ListView.builder(
             padding: const EdgeInsets.all(24),

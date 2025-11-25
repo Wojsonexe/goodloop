@@ -183,7 +183,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [challenge.color.withOpacity(0.3), Colors.white],
+            colors: [challenge.color.withValues(alpha: 0.3), Colors.white],
           ),
         ),
         child: SafeArea(
@@ -212,7 +212,9 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: challenge.color.withOpacity(0.3),
+                                      color: challenge.color.withValues(
+                                        alpha: 0.3,
+                                      ),
                                       blurRadius: 20,
                                       spreadRadius: 5,
                                     ),
@@ -253,7 +255,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: Colors.black.withValues(alpha: 0.1),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),
@@ -278,13 +280,13 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
                           gradient: LinearGradient(
                             colors: [
                               challenge.color,
-                              challenge.color.withOpacity(0.7),
+                              challenge.color.withValues(alpha: 0.7),
                             ],
                           ),
                           borderRadius: BorderRadius.circular(30),
                           boxShadow: [
                             BoxShadow(
-                              color: challenge.color.withOpacity(0.3),
+                              color: challenge.color.withValues(alpha: 0.3),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),
@@ -322,10 +324,10 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: challenge.color.withOpacity(0.1),
+                          color: challenge.color.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: challenge.color.withOpacity(0.3),
+                            color: challenge.color.withValues(alpha: 0.3),
                             width: 2,
                           ),
                         ),
@@ -469,7 +471,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.amber.withOpacity(0.2),
+                    color: Colors.amber.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Text(

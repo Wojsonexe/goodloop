@@ -1,40 +1,68 @@
+import 'dart:developer';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../data/models/user_model.dart';
 
-final authRepositoryProvider = Provider((ref) => AuthRepository());
-final userRepositoryProvider = Provider((ref) => UserRepository());
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  return AuthRepository();
+});
+
+final userRepositoryProvider = Provider<UserRepository>((ref) {
+  return UserRepository();
+});
 
 final authStateProvider = StreamProvider<User?>((ref) {
-  return ref.watch(authRepositoryProvider).authStateChanges;
+  final authRepo = ref.watch(authRepositoryProvider);
+  return authRepo.authStateChanges;
 });
 
 final currentUserProvider = StreamProvider<UserModel?>((ref) {
   final authState = ref.watch(authStateProvider);
+
   return authState.when(
-    data: (user) {
-      if (user == null) return Stream.value(null);
-      return ref.watch(userRepositoryProvider).getUserStream(user.uid);
+    data: (firebaseUser) {
+      if (firebaseUser == null) {
+        return Stream.value(null);
+      }
+
+      final userRepo = ref.watch(userRepositoryProvider);
+      return userRepo.getUserStream(firebaseUser.uid);
     },
     loading: () => Stream.value(null),
-    error: (_, __) => Stream.value(null),
+    error: (error, stack) {
+      log('❌ Auth state error: $error');
+      return Stream.value(null);
+    },
   );
 });
 
-class AuthController extends StateNotifier<AsyncValue<void>> {
+class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
   final AuthRepository _authRepository;
-  final UserRepository _userRepository;
+  final Ref ref;
 
-  AuthController(this._authRepository, this._userRepository)
+  AuthController(this._authRepository, this.ref)
     : super(const AsyncValue.data(null));
 
-  Future<void> signInWithEmail(String email, String password) async {
+  Future<void> signUp({
+    required String email,
+    required String password,
+    required String displayName,
+  }) async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      await _authRepository.signInWithEmail(email, password);
-    });
+    try {
+      final user = await _authRepository.signUpWithEmail(
+        email: email,
+        password: password,
+        displayName: displayName,
+      );
+      state = AsyncValue.data(user);
+    } catch (e, stack) {
+      state = AsyncValue.error(e, stack);
+      rethrow;
+    }
   }
 
   Future<void> registerWithEmail(
@@ -42,52 +70,65 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
     String password,
     String displayName,
   ) async {
+    return signUp(email: email, password: password, displayName: displayName);
+  }
+
+  Future<void> signIn({required String email, required String password}) async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      final userCredential = await _authRepository.registerWithEmail(
-        email,
-        password,
-      );
-      final user = UserModel(
-        id: userCredential.user!.uid,
+    try {
+      final user = await _authRepository.signInWithEmail(
         email: email,
-        displayName: displayName,
-        createdAt: DateTime.now(),
+        password: password,
       );
-      await _userRepository.createUser(user);
-    });
+      state = AsyncValue.data(user);
+    } catch (e, stack) {
+      state = AsyncValue.error(e, stack);
+      rethrow;
+    }
+  }
+
+  Future<void> signInWithEmail(String email, String password) async {
+    return signIn(email: email, password: password);
   }
 
   Future<void> signInWithGoogle() async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      final userCredential = await _authRepository.signInWithGoogle();
-      final existingUser = await _userRepository.getUser(
-        userCredential.user!.uid,
-      );
-
-      if (existingUser == null) {
-        final user = UserModel(
-          id: userCredential.user!.uid,
-          email: userCredential.user!.email!,
-          displayName: userCredential.user!.displayName,
-          photoUrl: userCredential.user!.photoURL,
-          createdAt: DateTime.now(),
-        );
-        await _userRepository.createUser(user);
-      }
-    });
+    try {
+      final user = await _authRepository.signInWithGoogle();
+      state = AsyncValue.data(user);
+    } catch (e, stack) {
+      state = AsyncValue.error(e, stack);
+      rethrow;
+    }
   }
 
   Future<void> signOut() async {
-    await _authRepository.signOut();
+    state = const AsyncValue.loading();
+    try {
+      await _authRepository.signOut();
+      state = const AsyncValue.data(null);
+    } catch (e, stack) {
+      state = AsyncValue.error(e, stack);
+      rethrow;
+    }
+  }
+
+  Future<void> resetPassword(String email) async {
+    try {
+      await _authRepository.resetPassword(email);
+    } catch (e) {
+      rethrow;
+    }
   }
 }
 
 final authControllerProvider =
-    StateNotifierProvider<AuthController, AsyncValue<void>>((ref) {
-      return AuthController(
-        ref.watch(authRepositoryProvider),
-        ref.watch(userRepositoryProvider),
-      );
+    StateNotifierProvider<AuthController, AsyncValue<UserModel?>>((ref) {
+      final authRepo = ref.watch(authRepositoryProvider);
+      return AuthController(authRepo, ref);
     });
+
+final isAuthenticatedProvider = Provider<bool>((ref) {
+  final authState = ref.watch(authStateProvider);
+  return authState.maybeWhen(data: (user) => user != null, orElse: () => false);
+});

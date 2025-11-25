@@ -1,61 +1,125 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/repositories/task_repository.dart';
-import '../../data/repositories/user_repository.dart';
-import '../../data/repositories/feed_repository.dart';
 import '../../data/models/task_model.dart';
-import '../../data/models/feed_item_model.dart';
+import '../../data/repositories/task_repository.dart';
 import 'auth_provider.dart';
 
-final taskRepositoryProvider = Provider((ref) => TaskRepository());
-final feedRepositoryProvider = Provider((ref) => FeedRepository());
+final taskRepositoryProvider = Provider<TaskRepository>((ref) {
+  return TaskRepository();
+});
 
-final currentTaskProvider = FutureProvider<TaskModel?>((ref) async {
-  final user = await ref.watch(currentUserProvider.future);
-  if (user?.currentTask == null) return null;
-  return ref.watch(taskRepositoryProvider).getTask(user!.currentTask!);
+final activeTasksProvider = StreamProvider<List<TaskModel>>((ref) {
+  final authState = ref.watch(authStateProvider);
+
+  return authState.when(
+    data: (user) {
+      if (user == null) return Stream.value([]);
+      final taskRepo = ref.watch(taskRepositoryProvider);
+      return taskRepo.getActiveTasks(user.uid);
+    },
+    loading: () => Stream.value([]),
+    error: (_, __) => Stream.value([]),
+  );
+});
+
+final completedTasksProvider = StreamProvider<List<TaskModel>>((ref) {
+  final authState = ref.watch(authStateProvider);
+
+  return authState.when(
+    data: (user) {
+      if (user == null) return Stream.value([]);
+      final taskRepo = ref.watch(taskRepositoryProvider);
+      return taskRepo.getCompletedTasks(user.uid);
+    },
+    loading: () => Stream.value([]),
+    error: (_, __) => Stream.value([]),
+  );
 });
 
 class TaskController extends StateNotifier<AsyncValue<void>> {
-  final UserRepository _userRepository;
-  final FeedRepository _feedRepository;
   final TaskRepository _taskRepository;
+  final String userId;
 
-  TaskController(
-    this._userRepository,
-    this._feedRepository,
-    this._taskRepository,
-  ) : super(const AsyncValue.data(null));
+  TaskController(this._taskRepository, this.userId)
+    : super(const AsyncValue.data(null));
 
-  Future<void> completeTask(
-    String userId,
-    String taskId,
-    int points,
-    String? reflection,
-  ) async {
+  Future<void> createTask({
+    required String title,
+    required String description,
+    TaskCategory category = TaskCategory.other,
+    DateTime? dueDate,
+    int points = 10,
+  }) async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      await _userRepository.completeTask(userId, taskId, points);
+    try {
+      final task = TaskModel(
+        id: '',
+        userId: userId,
+        title: title,
+        description: description,
+        category: category,
+        points: points,
+        createdAt: DateTime.now(),
+        dueDate: dueDate,
+      );
 
-      if (reflection != null && reflection.isNotEmpty) {
-        final task = await _taskRepository.getTask(taskId);
-        final feedItem = FeedItemModel(
-          id: '',
-          taskId: taskId,
-          content: reflection,
-          timestamp: DateTime.now(),
-          taskText: task?.text,
-        );
-        await _feedRepository.addFeedItem(feedItem);
-      }
-    });
+      await _taskRepository.createTask(task);
+      state = const AsyncValue.data(null);
+    } catch (e, stack) {
+      state = AsyncValue.error(e, stack);
+      rethrow;
+    }
+  }
+
+  Future<void> completeTask(String taskId, int points) async {
+    state = const AsyncValue.loading();
+    try {
+      await _taskRepository.completeTask(userId, taskId, points);
+      state = const AsyncValue.data(null);
+    } catch (e, stack) {
+      state = AsyncValue.error(e, stack);
+      rethrow;
+    }
+  }
+
+  Future<void> uncompleteTask(String taskId, int points) async {
+    state = const AsyncValue.loading();
+    try {
+      await _taskRepository.uncompleteTask(userId, taskId, points);
+      state = const AsyncValue.data(null);
+    } catch (e, stack) {
+      state = AsyncValue.error(e, stack);
+      rethrow;
+    }
+  }
+
+  Future<void> deleteTask(String taskId) async {
+    state = const AsyncValue.loading();
+    try {
+      await _taskRepository.deleteTask(userId, taskId);
+      state = const AsyncValue.data(null);
+    } catch (e, stack) {
+      state = AsyncValue.error(e, stack);
+      rethrow;
+    }
+  }
+
+  Future<void> updateTask(String taskId, Map<String, dynamic> updates) async {
+    state = const AsyncValue.loading();
+    try {
+      await _taskRepository.updateTask(userId, taskId, updates);
+      state = const AsyncValue.data(null);
+    } catch (e, stack) {
+      state = AsyncValue.error(e, stack);
+      rethrow;
+    }
   }
 }
 
 final taskControllerProvider =
-    StateNotifierProvider<TaskController, AsyncValue<void>>((ref) {
-      return TaskController(
-        ref.watch(userRepositoryProvider),
-        ref.watch(feedRepositoryProvider),
-        ref.watch(taskRepositoryProvider),
-      );
+    StateNotifierProvider.family<TaskController, AsyncValue<void>, String>((
+      ref,
+      userId,
+    ) {
+      final taskRepo = ref.watch(taskRepositoryProvider);
+      return TaskController(taskRepo, userId);
     });
