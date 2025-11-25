@@ -21,7 +21,7 @@
 
 **GoodLoop** to aplikacja mobilna stworzona na potrzeby 10. edycji konkursu **Hack Heroes 2025**. Projekt łączy nowoczesną technologię z psychologią pozytywną, zachęcając użytkowników do wykonywania drobnych, codziennych aktów dobroci.
 
-Każdego dnia o północy użytkownik otrzymuje nowe zadanie (np. _"Pochwal kogoś szczerze"_), którego wykonanie przynosi punkty, buduje motywacyjny "streak" i realnie zmienia świat na lepsze.
+Każdego dnia użytkownik otrzymuje nowe zadanie (np. _"Pochwal kogoś szczerze"_), którego wykonanie przynosi punkty, buduje motywacyjny "streak" i realnie zmienia świat na lepsze.
 
 ## 🎯 Cel Społeczny
 
@@ -29,7 +29,7 @@ W świecie pełnym negatywnych wiadomości, stresu i izolacji, GoodLoop odpowiad
 
 - 🌟 **Walka z znieczulicą:** Budujemy nawyk zauważania drugiego człowieka.
 - 🔥 **Motywacja:** Mechanika _streaks_ (dni z rzędu) pomaga utrzymać regularność w czynieniu dobra.
-- 🌍 **Wspólnota:** Anonimowy feed pozwala czerpać inspirację z dobrych uczynków innych, nie karmiąc ego (brak nazwisk, czysta inspiracja).
+- 🌍 **Wspólnota:** Anonimowy feed pozwala czerpać inspirację z dobrych uczynków innych, nie karmiąc ego.
 - 💪 **Sprawczość:** Pokazujemy młodym ludziom, że małe gesty mają wielką moc oddziaływania.
 
 > **Czas realizacji projektu:** 10 - 25 listopada 2025
@@ -40,31 +40,28 @@ W świecie pełnym negatywnych wiadomości, stresu i izolacji, GoodLoop odpowiad
 
 ### 📅 System Codziennych Zadań
 
-- Automatyczne nowe zadanie każdego dnia.
-- Kategorie: _życzliwość, pomoc, wdzięczność, dzielenie się_.
-- Różne poziomy trudności punktowane gwiazdkami.
+- Automatyczne, globalne zadanie dla wszystkich użytkowników.
+- Kategorie zadań: _życzliwość, pomoc, wdzięczność_.
+- Różne stopnie trudności punktowane odpowiednią ilością punktów.
 
 ### 🎮 Gamifikacja
 
-- **Punkty:** Za każde ukończone zadanie.
-- **Poziomy:**
-  - 🌱 Początkujący (0-100 pkt)
-  - 🌿 Pomocnik (100-300 pkt)
-  - 🌻 Inspirator (300-500 pkt)
-  - 👑 Strażnik Dobra (500+ pkt)
-- **Osiągnięcia:** System odznak (np. "Tygodniowy Wojownik", "Pierwsze Kroki").
+- **Punkty:** Zdobywaj punkty za każde ukończone zadanie.
+- **Poziomy (Level System):** Zbieraj punkty, aby awansować na wyższe poziomy (Level 1, Level 2 itd.).
+- **Streak:** Licznik dni z rzędu, motywujący do regularności.
+- **Osiągnięcia:** System odznak za specjalne dokonania (np. ukończenie pierwszego zadania).
 
 ### 🌍 Społeczność
 
 - Anonimowy feed "GoodVibes".
-- Możliwość dodania refleksji po wykonaniu zadania.
-- Bezpieczna przestrzeń bez hejtu.
+- Możliwość dzielenia się refleksją po wykonaniu zadania.
+- Przeglądanie dobrych uczynków innych użytkowników.
 
-### 👤 Profil i Personalizacja
+### 👤 Profil
 
-- Personalizacja awatara.
-- Zaawansowane statystyki i historia.
-- Ranking użytkowników (oparty na poziomie, nie na rywalizacji).
+- Statystyki użytkownika (punkty, streak, wykonane zadania).
+- Historia osiągnięć.
+- Personalizacja profilu (zdjęcie awatara).
 
 ---
 
@@ -90,7 +87,7 @@ Instalacja zajmuje mniej niż **10 minut**.
 1.  **Sklonuj repozytorium:**
 
     ```bash
-    git clone [https://github.com/](https://github.com/)[TWOJA_NAZWA_UZYTKOWNIKA]/goodloop.git
+    git clone [https://github.com/Wojsonexe/goodloop.git](https://github.com/Wojsonexe/goodloop.git)
     cd goodloop
     ```
 
@@ -103,7 +100,7 @@ Instalacja zajmuje mniej niż **10 minut**.
 3.  **Konfiguracja Firebase (Ważne!):**
 
     - _Opcja A (Szybka):_ Użyj pliku `google-services.json` dostarczonego w załączniku zgłoszenia (jeśli dołączono) i umieść go w `android/app/`.
-    - _Opcja B (Własna):_ Utwórz projekt w Firebase Console, dodaj aplikację Android (`com.example.goodloop`) i pobierz własny `google-services.json`.
+    - _Opcja B (Własna):_ Utwórz projekt w Firebase Console, dodaj aplikację Android (`com.goodloop.app`) i pobierz własny `google-services.json`.
 
 4.  **Uruchom aplikację:**
     ```bash
@@ -116,7 +113,7 @@ Instalacja zajmuje mniej niż **10 minut**.
 
 Gotowy plik `.apk` do zainstalowania na telefonie znajduje się w sekcji **Releases** tego repozytorium.
 
-- [Kliknij tutaj, aby pobrać najnowsze wydanie](https://github.com/[TWOJA_NAZWA_UZYTKOWNIKA]/goodloop/releases)
+- [Kliknij tutaj, aby pobrać najnowsze wydanie](https://github.com/Wojsonexe/goodloop/releases)
 
 ---
 
@@ -132,8 +129,7 @@ Gotowy plik `.apk` do zainstalowania na telefonie znajduje się w sekcji **Relea
 **Backend & Usługi:**
 
 - 🔥 **Firebase Auth:** Logowanie i rejestracja.
-- ☁️ **Cloud Firestore:** Baza danych NoSQL w czasie rzeczywistym.
-- 🗄️ **Appwrite Storage / Firebase Storage:** Przechowywanie zdjęć profilowych.
+- ☁️ **Cloud Firestore:** Baza danych NoSQL w czasie rzeczywistym (synchronizacja zadań).
 - 🔔 **Flutter Local Notifications:** Lokalne powiadomienia przypominające o zadaniach.
 
 ---
@@ -153,23 +149,23 @@ Gotowy plik `.apk` do zainstalowania na telefonie znajduje się w sekcji **Relea
 
 ## 👥 Zespół
 
-**Autor:** [Twoje Imię i Nazwisko]
-**Szkoła:** [Pełna Nazwa Szkoły]
-**Klasa:** [np. 3 Technikum Informatyczne]
-**Opiekun:** [Imię i Nazwisko Opiekuna] (opcjonalnie)
+**Autorzy:** Wojciech Włosek & Mateusz Ostrowski
+**Szkoła:** Lubelskie Centrum Kształcenia Zawodowego i Ustawicznego w Lublinie
+**Klasa:** 3 i 4 klasa kierunek Technik Informatyk
+**Opiekun:** Michał Ziółek
 
 ---
 
 ## 📄 Licencja
 
 Projekt udostępniony na licencji **MIT**.
-Copyright (c) 2025 [Twoje Imię i Nazwisko].
+Copyright (c) 2025 Wojciech Włosek & Mateusz Ostrowski.
 
 _Aplikacja stworzona w ramach konkursu Hack Heroes 2025 organizowanego przez Fundację Media 3.0._
 
 <div align="center">
-	<br>
-	Stworzone z 💝 i ☕
-	<br>
-	<i>Każdy mały akt dobroci ma znaczenie.</i>
+    <br>
+    Stworzone z 💝 i ☕
+    <br>
+    <i>Każdy mały akt dobroci ma znaczenie.</i>
 </div>
