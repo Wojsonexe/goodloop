@@ -87,7 +87,7 @@ Instalacja zajmuje mniej niż **10 minut**.
 1.  **Sklonuj repozytorium:**
 
     ```bash
-    git clone [https://github.com/Wojsonexe/goodloop.git](https://github.com/Wojsonexe/goodloop.git)
+    git clone (https://github.com/Wojsonexe/goodloop.git)
     cd goodloop
     ```
 
@@ -160,8 +160,8 @@ Gotowy plik `.apk` do zainstalowania na telefonie znajduje się w sekcji **Relea
 
 ## 📄 Licencja
 
-Projekt udostępniony na licencji **MIT**.
-Copyright (c) 2025 Wojciech Włosek & Mateusz Ostrowski.
+- Projekt udostępniony na licencji **MIT**.
+- Copyright (c) 2025 Wojciech Włosek & Mateusz Ostrowski.
 
 _Aplikacja stworzona w ramach konkursu Hack Heroes 2025 organizowanego przez Fundację Media 3.0._
 
