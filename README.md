@@ -149,10 +149,12 @@ Gotowy plik `.apk` do zainstalowania na telefonie znajduje się w sekcji **Relea
 
 ## 👥 Zespół
 
-**Autorzy:** Wojciech Włosek & Mateusz Ostrowski
-**Szkoła:** Lubelskie Centrum Kształcenia Zawodowego i Ustawicznego w Lublinie
-**Klasa:** 3 i 4 klasa kierunek Technik Informatyk
-**Opiekun:** Michał Ziółek
+- **Autorzy:**
+  - Wojciech Włosek
+  - Mateusz Ostrowski
+- **Szkoła:** Lubelskie Centrum Kształcenia Zawodowego i Ustawicznego w Lublinie
+- **Klasa:** 3 i 4 klasa, kierunek Technik Informatyk
+- **Opiekun:** Michał Ziółek
 
 ---
 
