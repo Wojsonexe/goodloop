@@ -45,41 +45,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     final reflection = await showDialog<String>(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Share Your Experience'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Would you like to share how you completed this task? (Optional)',
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _reflectionController,
-                  decoration: const InputDecoration(
-                    hintText: 'I helped my friend with...',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 3,
-                ),
-              ],
+      builder: (context) => AlertDialog(
+        title: const Text('Share Your Experience'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Would you like to share how you completed this task? (Optional)',
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, ''),
-                child: const Text('Skip'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _reflectionController,
+              decoration: const InputDecoration(
+                hintText: 'I helped my friend with...',
+                border: OutlineInputBorder(),
               ),
-              ElevatedButton(
-                onPressed:
-                    () => Navigator.pop(context, _reflectionController.text),
-                child: const Text('Share'),
-              ),
-            ],
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, ''),
+            child: const Text('Skip'),
           ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, _reflectionController.text),
+            child: const Text('Share'),
+          ),
+        ],
+      ),
     );
 
     if (reflection == null) return;
+
+    // ✅ Użycie kontrolera do zaliczenia zadania globalnego
     await ref
         .read(taskControllerProvider(user.id).notifier)
         .completeTask(task.id, task.points);
@@ -133,7 +133,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '${user.level}',
+                                'Level ${user.level}',
                                 style: TextStyle(
                                   color: Colors.white.withValues(alpha: 0.9),
                                   fontSize: 16,
@@ -145,14 +145,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             onTap: () => context.push('/profile'),
                             child: CircleAvatar(
                               radius: 28,
-                              backgroundImage:
-                                  user.photoUrl != null
-                                      ? NetworkImage(user.photoUrl!)
-                                      : null,
-                              child:
-                                  user.photoUrl == null
-                                      ? const Icon(Icons.person)
-                                      : null,
+                              backgroundImage: user.photoUrl != null
+                                  ? NetworkImage(user.photoUrl!)
+                                  : null,
+                              child: user.photoUrl == null
+                                  ? const Icon(Icons.person)
+                                  : null,
                             ),
                           ),
                         ],
@@ -191,9 +189,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   Text(
                                     'Points',
                                     style: TextStyle(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.8,
-                                      ),
+                                      color:
+                                          Colors.white.withValues(alpha: 0.8),
                                       fontSize: 12,
                                     ),
                                   ),
@@ -216,23 +213,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             top: Radius.circular(32),
                           ),
                         ),
-                        // ✅ ZMIANA: Używamy activeTasksAsync zamiast taskAsync
                         child: activeTaskAsync.when(
                           data: (tasks) {
-                            // Sprawdzamy, czy użytkownik już wykonał zadanie dzisiaj
-                            if (user.taskCompletedToday) {
+                            // ✅ Jeśli lista jest pusta (po odfiltrowaniu zrobionych),
+                            // oznacza to, że użytkownik wykonał już wszystko.
+                            if (tasks.isEmpty) {
                               return _buildCompletedView(context);
                             }
 
-                            // Pobieramy pierwsze zadanie z listy
-                            final currentTask =
-                                tasks.isEmpty ? null : tasks.first;
-
-                            if (currentTask == null) {
-                              return const Center(
-                                child: Text('No active tasks for today!'),
-                              );
-                            }
+                            // Pobieramy pierwsze dostępne zadanie
+                            final currentTask = tasks.first;
 
                             return SingleChildScrollView(
                               padding: const EdgeInsets.all(24),
@@ -250,26 +240,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   TaskCard(task: currentTask),
                                   const SizedBox(height: 24),
                                   CustomButton(
-                                    // ✅ Przekazujemy zadanie do funkcji
                                     onPressed: () => _completeTask(currentTask),
                                     child: const Text('Mark as Complete'),
                                   ),
                                   const SizedBox(height: 16),
                                   CustomProgressIndicator(
                                     current: user.completedTasks,
-                                    total: 100, // Tu możesz wstawić cel poziomu
+                                    total: 100, // Tu możesz wstawić cel
                                   ),
                                 ],
                               ),
                             );
                           },
-                          loading:
-                              () => const Center(
-                                child: CircularProgressIndicator(),
-                              ),
-                          error:
-                              (error, _) =>
-                                  Center(child: Text('Error: $error')),
+                          loading: () => const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                          error: (error, _) =>
+                              Center(child: Text('Error: $error')),
                         ),
                       ),
                     ),
@@ -331,7 +318,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  // Wydzielony widok "Gratulacje" dla czystości kodu
   Widget _buildCompletedView(BuildContext context) {
     return Center(
       child: Padding(

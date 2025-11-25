@@ -7,28 +7,25 @@ final taskRepositoryProvider = Provider<TaskRepository>((ref) {
   return TaskRepository();
 });
 
+// ✅ Provider zadań aktywnych (do zrobienia)
 final activeTasksProvider = StreamProvider<List<TaskModel>>((ref) {
-  final authState = ref.watch(authStateProvider);
+  final userAsync = ref.watch(currentUserProvider);
+  final taskRepo = ref.watch(taskRepositoryProvider);
 
-  return authState.when(
+  return userAsync.when(
     data: (user) {
       if (user == null) return Stream.value([]);
-      final taskRepo = ref.watch(taskRepositoryProvider);
-      return taskRepo.getActiveTasks(user.uid);
-    },
-    loading: () => Stream.value([]),
-    error: (_, __) => Stream.value([]),
-  );
-});
 
-final completedTasksProvider = StreamProvider<List<TaskModel>>((ref) {
-  final authState = ref.watch(authStateProvider);
+      // Pobieramy wszystkie zadania z dailyTasks
+      return taskRepo.getGlobalDailyTasks().map((allTasks) {
+        // Pobieramy listę ID zadań już wykonanych przez usera
+        final completedIds = user.completedTaskIds;
 
-  return authState.when(
-    data: (user) {
-      if (user == null) return Stream.value([]);
-      final taskRepo = ref.watch(taskRepositoryProvider);
-      return taskRepo.getCompletedTasks(user.uid);
+        // Filtrujemy: Zwracamy tylko te, których ID NIE MA na liście
+        return allTasks.where((task) {
+          return !completedIds.contains(task.id);
+        }).toList();
+      });
     },
     loading: () => Stream.value([]),
     error: (_, __) => Stream.value([]),
@@ -40,8 +37,21 @@ class TaskController extends StateNotifier<AsyncValue<void>> {
   final String userId;
 
   TaskController(this._taskRepository, this.userId)
-    : super(const AsyncValue.data(null));
+      : super(const AsyncValue.data(null));
 
+  // ✅ Metoda wywoływana z UI po kliknięciu "Complete"
+  Future<void> completeTask(String taskId, int points) async {
+    state = const AsyncValue.loading();
+    try {
+      await _taskRepository.completeGlobalTask(userId, taskId, points);
+      state = const AsyncValue.data(null);
+    } catch (e, stack) {
+      state = AsyncValue.error(e, stack);
+      rethrow;
+    }
+  }
+
+  // (Metoda createTask, jeśli używana do prywatnych zadań)
   Future<void> createTask({
     required String title,
     required String description,
@@ -61,52 +71,7 @@ class TaskController extends StateNotifier<AsyncValue<void>> {
         createdAt: DateTime.now(),
         dueDate: dueDate,
       );
-
       await _taskRepository.createTask(task);
-      state = const AsyncValue.data(null);
-    } catch (e, stack) {
-      state = AsyncValue.error(e, stack);
-      rethrow;
-    }
-  }
-
-  Future<void> completeTask(String taskId, int points) async {
-    state = const AsyncValue.loading();
-    try {
-      await _taskRepository.completeTask(userId, taskId, points);
-      state = const AsyncValue.data(null);
-    } catch (e, stack) {
-      state = AsyncValue.error(e, stack);
-      rethrow;
-    }
-  }
-
-  Future<void> uncompleteTask(String taskId, int points) async {
-    state = const AsyncValue.loading();
-    try {
-      await _taskRepository.uncompleteTask(userId, taskId, points);
-      state = const AsyncValue.data(null);
-    } catch (e, stack) {
-      state = AsyncValue.error(e, stack);
-      rethrow;
-    }
-  }
-
-  Future<void> deleteTask(String taskId) async {
-    state = const AsyncValue.loading();
-    try {
-      await _taskRepository.deleteTask(userId, taskId);
-      state = const AsyncValue.data(null);
-    } catch (e, stack) {
-      state = AsyncValue.error(e, stack);
-      rethrow;
-    }
-  }
-
-  Future<void> updateTask(String taskId, Map<String, dynamic> updates) async {
-    state = const AsyncValue.loading();
-    try {
-      await _taskRepository.updateTask(userId, taskId, updates);
       state = const AsyncValue.data(null);
     } catch (e, stack) {
       state = AsyncValue.error(e, stack);
@@ -117,9 +82,9 @@ class TaskController extends StateNotifier<AsyncValue<void>> {
 
 final taskControllerProvider =
     StateNotifierProvider.family<TaskController, AsyncValue<void>, String>((
-      ref,
-      userId,
-    ) {
-      final taskRepo = ref.watch(taskRepositoryProvider);
-      return TaskController(taskRepo, userId);
-    });
+  ref,
+  userId,
+) {
+  final taskRepo = ref.watch(taskRepositoryProvider);
+  return TaskController(taskRepo, userId);
+});

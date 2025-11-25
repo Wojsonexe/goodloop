@@ -1,10 +1,7 @@
-// lib/presentation/screens/daily_challenge/daily_challenge_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:math';
 
-// Model Daily Challenge
 class DailyChallenge {
   final String id;
   final String title;
@@ -27,7 +24,6 @@ class DailyChallenge {
   });
 }
 
-// Generator Daily Challenges
 class DailyChallengeGenerator {
   static final List<Map<String, dynamic>> _challenges = [
     {
@@ -449,54 +445,53 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
     // Show success dialog
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            title: const Text(
-              '🎉 Gratulacje!',
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text(
+          '🎉 Gratulacje!',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 24),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Ukończyłeś dzisiejsze wyzwanie!',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 24),
+              style: TextStyle(fontSize: 16),
             ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Ukończyłeś dzisiejsze wyzwanie!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16),
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(
-                    '+${ref.read(dailyChallengeProvider).points}',
-                    style: const TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.amber,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'punktów',
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Super!'),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
               ),
-            ],
+              child: Text(
+                '+${ref.read(dailyChallengeProvider).points}',
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.amber,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'punktów',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Super!'),
           ),
+        ],
+      ),
     );
   }
 }

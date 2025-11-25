@@ -1,5 +1,3 @@
-// lib/presentation/widgets/streak_animation_widget.dart
-
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
@@ -31,7 +29,6 @@ class _StreakAnimationWidgetState extends State<StreakAnimationWidget>
   void initState() {
     super.initState();
 
-    // Flame flicker animation
     _flameController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -41,7 +38,6 @@ class _StreakAnimationWidgetState extends State<StreakAnimationWidget>
       CurvedAnimation(parent: _flameController, curve: Curves.easeInOut),
     );
 
-    // Pulse animation
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
@@ -51,7 +47,6 @@ class _StreakAnimationWidgetState extends State<StreakAnimationWidget>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    // Rotate animation for high streaks
     _rotateController = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
@@ -318,51 +313,47 @@ class StreakDetailsDialog extends StatelessWidget {
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children:
-          milestones.map((milestone) {
-            final days = milestone['days'] as int;
-            final isAchieved = streakDays >= days;
+      children: milestones.map((milestone) {
+        final days = milestone['days'] as int;
+        final isAchieved = streakDays >= days;
 
-            return Column(
-              children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color:
-                        isAchieved
-                            ? _getStreakColor().withValues(alpha: 0.2)
-                            : Colors.grey.shade200,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color:
-                          isAchieved ? _getStreakColor() : Colors.grey.shade400,
-                      width: 2,
-                    ),
-                  ),
-                  child: Center(
-                    child: Opacity(
-                      opacity: isAchieved ? 1.0 : 0.3,
-                      child: Text(
-                        milestone['emoji'] as String,
-                        style: const TextStyle(fontSize: 24),
-                      ),
-                    ),
+        return Column(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: isAchieved
+                    ? _getStreakColor().withValues(alpha: 0.2)
+                    : Colors.grey.shade200,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isAchieved ? _getStreakColor() : Colors.grey.shade400,
+                  width: 2,
+                ),
+              ),
+              child: Center(
+                child: Opacity(
+                  opacity: isAchieved ? 1.0 : 0.3,
+                  child: Text(
+                    milestone['emoji'] as String,
+                    style: const TextStyle(fontSize: 24),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  milestone['label'] as String,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: isAchieved ? _getStreakColor() : Colors.grey,
-                    fontWeight:
-                        isAchieved ? FontWeight.bold : FontWeight.normal,
-                  ),
-                ),
-              ],
-            );
-          }).toList(),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              milestone['label'] as String,
+              style: TextStyle(
+                fontSize: 10,
+                color: isAchieved ? _getStreakColor() : Colors.grey,
+                fontWeight: isAchieved ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        );
+      }).toList(),
     );
   }
 }

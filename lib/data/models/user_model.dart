@@ -1,4 +1,5 @@
-import "package:cloud_firestore/cloud_firestore.dart";
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 class UserModel {
   final String uid;
@@ -14,6 +15,8 @@ class UserModel {
   final int level;
   final DateTime? lastTaskCompletedDate;
 
+  final List<String> completedTaskIds;
+
   UserModel({
     required this.uid,
     required this.email,
@@ -27,15 +30,14 @@ class UserModel {
     required this.level,
     this.achievements = const [],
     this.lastTaskCompletedDate,
+    this.completedTaskIds = const [],
   });
 
-  // ✅ DODANE GETTERY DO KOMPATYBILNOŚCI
   String get id => uid;
   String? get photoUrl => photoURL;
   int get streak => streakDays;
   int get points => totalPoints;
 
-  // ✅ Sprawdzenie czy zadanie zostało ukończone dzisiaj
   bool get taskCompletedToday {
     if (lastTaskCompletedDate == null) return false;
     final now = DateTime.now();
@@ -58,10 +60,10 @@ class UserModel {
       lastActive: _parseTimestamp(map['lastActive']),
       achievements: _parseStringList(map['achievements']),
       level: (map['level'] as num?)?.toInt() ?? 1,
-      lastTaskCompletedDate:
-          map['lastTaskCompletedDate'] != null
-              ? _parseTimestamp(map['lastTaskCompletedDate'])
-              : null,
+      lastTaskCompletedDate: map['lastTaskCompletedDate'] != null
+          ? _parseTimestamp(map['lastTaskCompletedDate'])
+          : null,
+      completedTaskIds: _parseStringList(map['completedTaskIds']),
     );
   }
 
@@ -97,10 +99,10 @@ class UserModel {
       'lastActive': Timestamp.fromDate(lastActive),
       'achievements': achievements,
       'level': level,
-      'lastTaskCompletedDate':
-          lastTaskCompletedDate != null
-              ? Timestamp.fromDate(lastTaskCompletedDate!)
-              : null,
+      'lastTaskCompletedDate': lastTaskCompletedDate != null
+          ? Timestamp.fromDate(lastTaskCompletedDate!)
+          : null,
+      'completedTaskIds': completedTaskIds,
     };
   }
 
@@ -117,6 +119,7 @@ class UserModel {
     DateTime? lastActive,
     List<String>? achievements,
     DateTime? lastTaskCompletedDate,
+    List<String>? completedTaskIds,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -132,11 +135,49 @@ class UserModel {
       achievements: achievements ?? this.achievements,
       lastTaskCompletedDate:
           lastTaskCompletedDate ?? this.lastTaskCompletedDate,
+      completedTaskIds: completedTaskIds ?? this.completedTaskIds,
     );
   }
 
   @override
   String toString() {
-    return 'UserModel(uid: $uid, email: $email, displayName: $displayName)';
+    return 'UserModel(uid: $uid, email: $email, displayName: $displayName, points: $totalPoints, completed: $completedTasks)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is UserModel &&
+        other.uid == uid &&
+        other.email == email &&
+        other.displayName == displayName &&
+        other.photoURL == photoURL &&
+        other.completedTasks == completedTasks &&
+        other.streakDays == streakDays &&
+        other.totalPoints == totalPoints &&
+        other.createdAt == createdAt &&
+        other.lastActive == lastActive &&
+        listEquals(other.achievements, achievements) &&
+        other.level == level &&
+        other.lastTaskCompletedDate == lastTaskCompletedDate &&
+        listEquals(other.completedTaskIds, completedTaskIds);
+  }
+
+  @override
+  int get hashCode {
+    return uid.hashCode ^
+        email.hashCode ^
+        displayName.hashCode ^
+        photoURL.hashCode ^
+        completedTasks.hashCode ^
+        streakDays.hashCode ^
+        totalPoints.hashCode ^
+        createdAt.hashCode ^
+        lastActive.hashCode ^
+        achievements.hashCode ^
+        level.hashCode ^
+        lastTaskCompletedDate.hashCode ^
+        completedTaskIds.hashCode;
   }
 }

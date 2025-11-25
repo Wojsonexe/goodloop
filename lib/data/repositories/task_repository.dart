@@ -1,207 +1,74 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:goodloop/logger.dart';
 import '../models/task_model.dart';
-import 'user_repository.dart';
 
 class TaskRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final UserRepository _userRepository = UserRepository();
+
+  // --- GLOBALNE ZADANIA (Nowa logika) ---
+
+  // ✅ 1. Pobieranie zadań z kolekcji 'dailyTasks'
+  Stream<List<TaskModel>> getGlobalDailyTasks() {
+    return _firestore.collection('dailyTasks').snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+
+        // Mapowanie danych z 'dailyTasks' na TaskModel
+        return TaskModel(
+          id: doc.id, // ID dokumentu z bazy (np. task1)
+          userId: 'global', // Zadanie nieprzypisane do konkretnego usera
+          title: data['text'] ?? data['title'] ?? 'Zadanie dnia',
+          description: data['description'] ?? 'Wykonaj dzisiejsze wyzwanie!',
+          category: TaskCategory.values.firstWhere(
+            (e) => e.name == (data['category'] ?? 'other'),
+            orElse: () => TaskCategory.other,
+          ),
+          // Konwersja difficulty na punkty (np. poziom 1 = 10 pkt)
+          points: ((data['difficulty'] ?? 1) as num).toInt() * 10,
+          createdAt: DateTime.now(),
+          isCompleted: false, // Status określamy w Providerze
+        );
+      }).toList();
+    });
+  }
+
+  // ✅ 2. Zaliczanie zadania globalnego (aktualizacja profilu usera)
+  Future<void> completeGlobalTask(
+      String userId, String taskId, int points) async {
+    try {
+      final userRef = _firestore.collection('users').doc(userId);
+
+      // Atomowa aktualizacja danych użytkownika
+      await userRef.update({
+        'completedTaskIds':
+            FieldValue.arrayUnion([taskId]), // Dodaj ID do listy
+        'completedTasks': FieldValue.increment(1),
+        'totalPoints': FieldValue.increment(points),
+        'lastTaskCompletedDate': FieldValue.serverTimestamp(),
+        'lastActive': FieldValue.serverTimestamp(),
+      });
+
+      logger.i('✅ Global task completed: $taskId for user $userId');
+    } catch (e) {
+      logger.e('❌ Error completing global task: $e');
+      rethrow;
+    }
+  }
+
+  // --- ZADANIA PRYWATNE (Stara logika - opcjonalnie do zachowania) ---
 
   CollectionReference _tasksCollection(String userId) {
     return _firestore.collection('users').doc(userId).collection('tasks');
   }
 
+  // (Pozostałe metody CRUD dla prywatnych zadań, jeśli chcesz je zachować)
   Future<String> createTask(TaskModel task) async {
     try {
       final docRef = await _tasksCollection(task.userId).add(task.toMap());
-      logger.i('✅ Task created: ${docRef.id}');
       return docRef.id;
     } catch (e) {
       logger.e('❌ Error creating task: $e');
       rethrow;
-    }
-  }
-
-  Stream<List<TaskModel>> getUserTasks(String userId) {
-    return _tasksCollection(
-      userId,
-    ).orderBy('createdAt', descending: true).snapshots().map((snapshot) {
-      return snapshot.docs
-          .map(
-            (doc) =>
-                TaskModel.fromMap(doc.data() as Map<String, dynamic>, doc.id),
-          )
-          .toList();
-    });
-  }
-
-  Stream<List<TaskModel>> getActiveTasks(String userId) {
-    return _tasksCollection(userId)
-        .where('isCompleted', isEqualTo: false)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) {
-          return snapshot.docs
-              .map(
-                (doc) => TaskModel.fromMap(
-                  doc.data() as Map<String, dynamic>,
-                  doc.id,
-                ),
-              )
-              .toList();
-        });
-  }
-
-  Stream<List<TaskModel>> getCompletedTasks(String userId) {
-    return _tasksCollection(userId)
-        .where('isCompleted', isEqualTo: true)
-        .orderBy('completedAt', descending: true)
-        .snapshots()
-        .map((snapshot) {
-          return snapshot.docs
-              .map(
-                (doc) => TaskModel.fromMap(
-                  doc.data() as Map<String, dynamic>,
-                  doc.id,
-                ),
-              )
-              .toList();
-        });
-  }
-
-  Future<TaskModel?> getTask(String userId, String taskId) async {
-    try {
-      final doc = await _tasksCollection(userId).doc(taskId).get();
-      if (!doc.exists) return null;
-      return TaskModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
-    } catch (e) {
-      logger.e('❌ Error getting task: $e');
-      return null;
-    }
-  }
-
-  Future<void> updateTask(
-    String userId,
-    String taskId,
-    Map<String, dynamic> updates,
-  ) async {
-    try {
-      await _tasksCollection(userId).doc(taskId).update(updates);
-      logger.i('✅ Task updated: $taskId');
-    } catch (e) {
-      logger.e('❌ Error updating task: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> completeTask(String userId, String taskId, int points) async {
-    try {
-      await _tasksCollection(userId).doc(taskId).update({
-        'isCompleted': true,
-        'completedAt': FieldValue.serverTimestamp(),
-      });
-
-      await _userRepository.incrementCompletedTasks(userId, points);
-
-      logger.i('✅ Task completed: $taskId');
-    } catch (e) {
-      logger.e('❌ Error completing task: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> uncompleteTask(String userId, String taskId, int points) async {
-    try {
-      await _tasksCollection(
-        userId,
-      ).doc(taskId).update({'isCompleted': false, 'completedAt': null});
-
-      await _userRepository.incrementCompletedTasks(userId, -points);
-
-      logger.i('✅ Task uncompleted: $taskId');
-    } catch (e) {
-      logger.e('❌ Error uncompleting task: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> deleteTask(String userId, String taskId) async {
-    try {
-      await _tasksCollection(userId).doc(taskId).delete();
-      logger.i('✅ Task deleted: $taskId');
-    } catch (e) {
-      logger.e('❌ Error deleting task: $e');
-      rethrow;
-    }
-  }
-
-  Stream<List<TaskModel>> getTasksByCategory(
-    String userId,
-    TaskCategory category,
-  ) {
-    return _tasksCollection(userId)
-        .where('category', isEqualTo: category.name)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) {
-          return snapshot.docs
-              .map(
-                (doc) => TaskModel.fromMap(
-                  doc.data() as Map<String, dynamic>,
-                  doc.id,
-                ),
-              )
-              .toList();
-        });
-  }
-
-  Stream<List<TaskModel>> getTodayTasks(String userId) {
-    final today = DateTime.now();
-    final startOfDay = DateTime(today.year, today.month, today.day);
-    final endOfDay = DateTime(today.year, today.month, today.day, 23, 59, 59);
-
-    return _tasksCollection(userId)
-        .where(
-          'dueDate',
-          isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
-        )
-        .where('dueDate', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
-        .snapshots()
-        .map((snapshot) {
-          return snapshot.docs
-              .map(
-                (doc) => TaskModel.fromMap(
-                  doc.data() as Map<String, dynamic>,
-                  doc.id,
-                ),
-              )
-              .toList();
-        });
-  }
-
-  Future<int> getWeeklyCompletedCount(String userId) async {
-    try {
-      final now = DateTime.now();
-      final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-      final startDate = DateTime(
-        startOfWeek.year,
-        startOfWeek.month,
-        startOfWeek.day,
-      );
-
-      final snapshot =
-          await _tasksCollection(userId)
-              .where('isCompleted', isEqualTo: true)
-              .where(
-                'completedAt',
-                isGreaterThanOrEqualTo: Timestamp.fromDate(startDate),
-              )
-              .get();
-
-      return snapshot.docs.length;
-    } catch (e) {
-      logger.e('❌ Error getting weekly count: $e');
-      return 0;
     }
   }
 }
