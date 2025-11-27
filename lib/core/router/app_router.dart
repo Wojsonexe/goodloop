@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:goodloop/domain/providers/notification_service.dart';
 import '../../presentation/screens/welcome/welcome_screen.dart';
 import '../../presentation/screens/auth/login_screen.dart';
 import '../../presentation/screens/auth/register_screen.dart';
@@ -14,11 +15,11 @@ final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
 
   return GoRouter(
+    navigatorKey: navigatorKey,
     initialLocation: '/welcome',
     redirect: (context, state) {
       final isAuthenticated = authState.value != null;
-      final isAuthRoute =
-          state.matchedLocation.startsWith('/auth') ||
+      final isAuthRoute = state.matchedLocation.startsWith('/auth') ||
           state.matchedLocation == '/welcome';
 
       if (!isAuthenticated && !isAuthRoute) {

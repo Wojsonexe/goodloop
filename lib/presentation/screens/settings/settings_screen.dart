@@ -1,3 +1,5 @@
+// ignore_for_file: unused_field
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,6 +17,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   TimeOfDay? _notificationTime;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -23,34 +26,48 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _loadNotificationTime() async {
-    final time = await NotificationService().getScheduledTime();
-    setState(() {
-      _notificationTime = TimeOfDay(
-        hour: time['hour']!,
-        minute: time['minute']!,
-      );
-    });
+    final service = ref.read(notificationServiceProvider);
+    final time = await service.getScheduledTime();
+
+    if (mounted) {
+      setState(() {
+        _notificationTime = time;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _pickNotificationTime() async {
+    final now = TimeOfDay.now();
     final time = await showTimePicker(
       context: context,
-      initialTime: _notificationTime ?? const TimeOfDay(hour: 9, minute: 0),
+      initialTime: _notificationTime ?? now,
     );
 
     if (time != null) {
-      await NotificationService().scheduleDailyNotification(
-        time.hour,
-        time.minute,
-      );
       setState(() => _notificationTime = time);
+      await ref.read(notificationServiceProvider).scheduleDailyReminder(
+            hour: time.hour,
+            minute: time.minute,
+          );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Notification time updated!')),
+          SnackBar(
+            content: Text('Ustawiono przypomnienie na ${time.format(context)}'),
+            action: SnackBarAction(
+              label: 'Anuluj',
+              onPressed: _cancelNotification,
+            ),
+          ),
         );
       }
     }
+  }
+
+  Future<void> _cancelNotification() async {
+    await ref.read(notificationServiceProvider).cancelDailyReminder();
+    setState(() => _notificationTime = null);
   }
 
   @override
@@ -79,9 +96,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 24),
-
           _buildSection(
             context,
             title: 'Appearance',
@@ -95,9 +110,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 24),
-
           _buildSection(
             context,
             title: 'Account',
@@ -112,9 +125,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 32),
-
           Center(
             child: Text(
               'GoodLoop v1.0.0',
@@ -141,9 +152,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: Text(
             title,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.bold,
-            ),
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.bold,
+                ),
           ),
         ),
         Container(
@@ -171,11 +182,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void _showThemeDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Select Theme'),
-            content: buildThemeSelector(context),
-          ),
+      builder: (context) => AlertDialog(
+        title: const Text('Select Theme'),
+        content: buildThemeSelector(context),
+      ),
     );
   }
 
@@ -213,29 +223,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void _showSignOutDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Sign Out'),
-            content: const Text('Are you sure you want to sign out?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  await ref.read(authControllerProvider.notifier).signOut();
-                  if (context.mounted) {
-                    context.go('/welcome');
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.error,
-                ),
-                child: const Text('Sign Out'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
           ),
+          ElevatedButton(
+            onPressed: () async {
+              await ref.read(authControllerProvider.notifier).signOut();
+              if (context.mounted) {
+                context.go('/welcome');
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+            ),
+            child: const Text('Sign Out'),
+          ),
+        ],
+      ),
     );
   }
 }
