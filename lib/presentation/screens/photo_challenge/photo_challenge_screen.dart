@@ -1,10 +1,5 @@
-// lib/presentation/screens/photo_challenge/photo_challenge_screen.dart
-
 import 'package:flutter/material.dart';
 import 'dart:io';
-
-// Dodaj do pubspec.yaml:
-// image_picker: ^1.0.7
 
 class PhotoChallenge {
   final String id;
