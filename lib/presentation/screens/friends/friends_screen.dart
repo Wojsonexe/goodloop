@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:goodloop/presentation/screens/friends/widgets/requests_tab.dart';
+import 'package:goodloop/presentation/screens/friends/widgets/search_tab.dart';
 import 'widgets/friends_tab.dart';
 
 class FriendsScreen extends ConsumerStatefulWidget {
@@ -29,9 +31,6 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Friends'),
@@ -51,9 +50,9 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _FriendsTab(),
-          _RequestsTab(),
-          _SearchTab(searchController: _searchController),
+          const FriendsTab(),
+          const RequestsTab(),
+          SearchTab(searchController: _searchController),
         ],
       ),
     );

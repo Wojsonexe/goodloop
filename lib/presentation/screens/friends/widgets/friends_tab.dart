@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:goodloop/domain/providers/friend_provider.dart';
+import 'package:goodloop/presentation/screens/friends/widgets/empty_state.dart';
+import 'package:goodloop/presentation/screens/friends/widgets/error_state.dart';
+import 'package:goodloop/presentation/screens/friends/widgets/friend_card.dart';
 
 class FriendsTab extends ConsumerWidget {
   const FriendsTab({super.key});
