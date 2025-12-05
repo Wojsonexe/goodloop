@@ -26,17 +26,22 @@ class NotificationService {
 
   static const String _prefHourKey = 'daily_reminder_hour';
   static const String _prefMinuteKey = 'daily_reminder_minute';
+  static const String _prefEnabledKey = 'daily_reminder_enabled';
+
+  static const int _dailyReminderId = 0;
+  static const int _taskNotificationId = 1;
+  static const int _achievementNotificationId = 2;
+  static const int _streakNotificationId = 3;
 
   Future<void> configureLocalTimeZone() async {
     tz.initializeTimeZones();
-    final dynamic timeZoneResponse = await FlutterTimezone.getLocalTimezone();
-    final String timeZoneName = timeZoneResponse.toString();
     try {
+      final timezoneInfo = await FlutterTimezone.getLocalTimezone();
+      final String timeZoneName = timezoneInfo.identifier;
       tz.setLocalLocation(tz.getLocation(timeZoneName));
-      logger.i("Ustawiono strefę czasową: $timeZoneName");
+      logger.i("✅ Timezone set to: $timeZoneName");
     } catch (e) {
-      logger
-          .e("Błąd ustawiania strefy '$timeZoneName': $e. Ustawiam domyślną.");
+      logger.e("❌ Timezone error: $e. Using Europe/Warsaw as fallback");
       tz.setLocalLocation(tz.getLocation('Europe/Warsaw'));
     }
   }
@@ -45,15 +50,27 @@ class NotificationService {
     logger.i('📱 Initializing notification service...');
 
     await _requestPermissions();
-
     await _initializeLocalNotifications();
-
     await _configureFCM();
+
+    await _restoreDailyReminder();
 
     logger.i('✅ Notification service initialized');
   }
 
   Future<void> _requestPermissions() async {
+    if (Platform.isAndroid) {
+      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+          _localNotifications.resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+
+      if (androidImplementation != null) {
+        final granted =
+            await androidImplementation.requestNotificationsPermission();
+        logger.i('📱 Android notification permission: $granted');
+      }
+    }
+
     final settings = await _messaging.requestPermission(
       alert: true,
       badge: true,
@@ -64,7 +81,7 @@ class NotificationService {
       criticalAlert: false,
     );
 
-    logger.i('📱 Notification permission: ${settings.authorizationStatus}');
+    logger.i('📱 FCM permission: ${settings.authorizationStatus}');
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
       logger.i('✅ User granted permission');
@@ -95,24 +112,24 @@ class NotificationService {
       settings,
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
+
+    logger.i('✅ Local notifications initialized');
   }
 
   Future<void> _configureFCM() async {
     String? token = await _messaging.getToken();
     if (token != null) {
-      logger.i('📱 FCM Token: $token');
+      logger.i('📱 FCM Token: ${token.substring(0, 20)}...');
       await _saveTokenToFirestore(token);
     }
 
     _messaging.onTokenRefresh.listen((newToken) {
-      logger.i('📱 New FCM Token: $newToken');
+      logger.i('📱 New FCM Token received');
       _saveTokenToFirestore(newToken);
     });
 
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-
     FirebaseMessaging.onBackgroundMessage(_handleBackgroundMessage);
-
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationOpen);
 
     RemoteMessage? initialMessage = await _messaging.getInitialMessage();
@@ -130,17 +147,7 @@ class NotificationService {
         return;
       }
 
-      String platformName = 'unknown';
-      try {
-        if (Platform.isAndroid) {
-          platformName = 'android';
-        } else if (Platform.isIOS) {
-          platformName = 'ios';
-        }
-      } catch (e) {
-        // Fallback dla web/innych
-        platformName = 'web/other';
-      }
+      String platformName = Platform.isAndroid ? 'android' : 'ios';
 
       await _firestore.collection('users').doc(user.uid).set({
         'fcmToken': token,
@@ -188,39 +195,27 @@ class NotificationService {
     }
 
     final type = data['type'] as String?;
-    final id = data['id'] as String?;
-
-    logger.i('📱 Navigating to: type=$type, id=$id');
+    logger.i('📱 Navigating to: type=$type');
 
     switch (type) {
       case 'task':
         Navigator.pushNamed(context, '/home');
         break;
-
       case 'achievement':
         Navigator.pushNamed(context, '/achievements');
         break;
-
       case 'friend_request':
         Navigator.pushNamed(context, '/friends');
         break;
-
       case 'chat':
         Navigator.pushNamed(context, '/chat');
         break;
-
       case 'challenge':
         Navigator.pushNamed(context, '/daily-challenge');
         break;
-
       case 'feed':
         Navigator.pushNamed(context, '/feed');
         break;
-
-      case 'reward':
-        Navigator.pushNamed(context, '/rewards', arguments: {'userPoints': 0});
-        break;
-
       default:
         Navigator.pushNamed(context, '/home');
     }
@@ -230,6 +225,7 @@ class NotificationService {
     required String title,
     required String body,
     String? payload,
+    int? id,
   }) async {
     const androidDetails = AndroidNotificationDetails(
       'goodloop_channel',
@@ -257,7 +253,7 @@ class NotificationService {
     );
 
     await _localNotifications.show(
-      DateTime.now().millisecondsSinceEpoch % 100000,
+      id ?? DateTime.now().millisecondsSinceEpoch % 100000,
       title,
       body,
       details,
@@ -270,37 +266,56 @@ class NotificationService {
     required int minute,
     String? customMessage,
   }) async {
-    logger.i('📱 Scheduling daily reminder for $hour:$minute');
+    logger.i(
+        '📱 Scheduling daily reminder for $hour:${minute.toString().padLeft(2, '0')}');
 
-    await _localNotifications.zonedSchedule(
-      0,
-      'Czas na dobry uczynek! 😊',
-      customMessage ?? 'Sprawdź swoje dzisiejsze zadania w GoodLoop',
-      _nextInstanceOfTime(hour, minute),
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'daily_reminder_channel',
-          'Daily Reminders',
-          channelDescription: 'Przypomnienia o codziennych zadaniach',
-          importance: Importance.max,
-          priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
-        ),
-        iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time,
-    );
+    try {
+      await _localNotifications.cancel(_dailyReminderId);
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_prefHourKey, hour);
-    await prefs.setInt(_prefMinuteKey, minute);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_prefHourKey, hour);
+      await prefs.setInt(_prefMinuteKey, minute);
+      await prefs.setBool(_prefEnabledKey, true);
+
+      final scheduledDate = _nextInstanceOfTime(hour, minute);
+
+      logger.i('📅 Next notification: ${scheduledDate.toString()}');
+
+      await _localNotifications.zonedSchedule(
+        _dailyReminderId,
+        '🎯 Time for a good deed!',
+        customMessage ?? 'Check your daily tasks in GoodLoop',
+        scheduledDate,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'daily_reminder_channel',
+            'Daily Reminders',
+            channelDescription: 'Daily task reminders',
+            importance: Importance.max,
+            priority: Priority.high,
+            icon: '@mipmap/ic_launcher',
+            color: Color(0xFF6200EE),
+            enableVibration: true,
+            playSound: true,
+            showWhen: true,
+          ),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
+        ),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+
+      logger.i('✅ Daily reminder scheduled successfully');
+    } catch (e, stack) {
+      logger.e('❌ Error scheduling reminder: $e', stackTrace: stack);
+      rethrow;
+    }
   }
 
   tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
@@ -313,6 +328,8 @@ class NotificationService {
       now.day,
       hour,
       minute,
+      0,
+      0,
     );
 
     if (scheduledDate.isBefore(now)) {
@@ -322,11 +339,41 @@ class NotificationService {
     return scheduledDate;
   }
 
+  Future<void> _restoreDailyReminder() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final enabled = prefs.getBool(_prefEnabledKey) ?? false;
+
+      if (!enabled) {
+        logger.i('⚠️ Daily reminder not enabled, skipping restore');
+        return;
+      }
+
+      final hour = prefs.getInt(_prefHourKey);
+      final minute = prefs.getInt(_prefMinuteKey);
+
+      if (hour != null && minute != null) {
+        logger.i('🔄 Restoring daily reminder: $hour:$minute');
+        await scheduleDailyReminder(hour: hour, minute: minute);
+      }
+    } catch (e) {
+      logger.e('❌ Error restoring reminder: $e');
+    }
+  }
+
   Future<void> cancelDailyReminder() async {
-    await _localNotifications.cancel(0);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_prefHourKey);
-    await prefs.remove(_prefMinuteKey);
+    try {
+      await _localNotifications.cancel(_dailyReminderId);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_prefHourKey);
+      await prefs.remove(_prefMinuteKey);
+      await prefs.setBool(_prefEnabledKey, false);
+
+      logger.i('❌ Daily reminder cancelled');
+    } catch (e) {
+      logger.e('❌ Error cancelling reminder: $e');
+    }
   }
 
   Future<TimeOfDay?> getScheduledTime() async {
@@ -340,9 +387,15 @@ class NotificationService {
     return null;
   }
 
+  Future<bool> isDailyReminderEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_prefEnabledKey) ?? false;
+  }
+
   Future<void> notifyNewTask(String taskTitle) async {
     await _showLocalNotification(
-      title: '🎯 Nowe zadanie!',
+      id: _taskNotificationId,
+      title: '🎯 New task available!',
       body: taskTitle,
       payload: _encodePayload({'type': 'task'}),
     );
@@ -350,24 +403,26 @@ class NotificationService {
 
   Future<void> notifyAchievementUnlocked(String achievementName) async {
     await _showLocalNotification(
-      title: '🏆 Nowe osiągnięcie!',
-      body: 'Odblokowałeś: $achievementName',
+      id: _achievementNotificationId,
+      title: '🏆 Achievement Unlocked!',
+      body: 'You unlocked: $achievementName',
       payload: _encodePayload({'type': 'achievement'}),
     );
   }
 
   Future<void> notifyStreakMilestone(int days) async {
     await _showLocalNotification(
-      title: '🔥 Niesamowita passa!',
-      body: 'Wykonujesz zadania od $days dni z rzędu!',
+      id: _streakNotificationId,
+      title: '🔥 Amazing Streak!',
+      body: 'You\'ve completed tasks for $days days in a row!',
       payload: _encodePayload({'type': 'task'}),
     );
   }
 
   Future<void> notifyFriendRequest(String friendName) async {
     await _showLocalNotification(
-      title: '👥 Nowe zaproszenie!',
-      body: '$friendName chce być Twoim znajomym',
+      title: '👥 New Friend Request!',
+      body: '$friendName wants to be your friend',
       payload: _encodePayload({'type': 'friend_request'}),
     );
   }
@@ -382,7 +437,7 @@ class NotificationService {
 
   Future<void> notifyDailyChallenge(String challengeTitle) async {
     await _showLocalNotification(
-      title: '🎲 Nowe wyzwanie dnia!',
+      title: '🎲 Daily Challenge!',
       body: challengeTitle,
       payload: _encodePayload({'type': 'challenge'}),
     );
@@ -392,27 +447,18 @@ class NotificationService {
     try {
       return jsonEncode(data);
     } catch (e) {
-      logger.e('Błąd kodowania payloadu: $e');
+      logger.e('❌ Error encoding payload: $e');
       return '{}';
     }
   }
 
   Map<String, dynamic> _decodePayload(String payload) {
-    final Map<String, dynamic> data = {};
-
     try {
-      final parts = payload.split('&');
-      for (final part in parts) {
-        final kv = part.split('=');
-        if (kv.length == 2) {
-          data[kv[0]] = kv[1];
-        }
-      }
+      return jsonDecode(payload) as Map<String, dynamic>;
     } catch (e) {
       logger.e('❌ Error decoding payload: $e');
+      return {};
     }
-
-    return data;
   }
 
   Future<void> cancelAll() async {
@@ -425,16 +471,16 @@ class NotificationService {
     logger.i('📱 Notification $id cancelled');
   }
 
-  Future<List<ActiveNotification>> getActiveNotifications() async {
-    if (Theme.of(navigatorKey.currentContext!).platform ==
-        TargetPlatform.android) {
-      final notifications = await _localNotifications
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.getActiveNotifications();
-      return notifications ?? [];
+  Future<List<PendingNotificationRequest>> getPendingNotifications() async {
+    return await _localNotifications.pendingNotificationRequests();
+  }
+
+  Future<void> logScheduledNotifications() async {
+    final pending = await getPendingNotifications();
+    logger.i('📋 Pending notifications: ${pending.length}');
+    for (var notification in pending) {
+      logger.i('  - ID: ${notification.id}, Title: ${notification.title}');
     }
-    return [];
   }
 }
 
