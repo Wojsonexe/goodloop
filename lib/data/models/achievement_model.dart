@@ -257,4 +257,19 @@ class AchievementRepository {
       logger.e('❌ Error checking achievements: $e');
     }
   }
+
+  Future<bool> isAchievementUnlocked(
+      String userId, String achievementId) async {
+    try {
+      final doc =
+          await _achievementsCollection(userId).doc(achievementId).get();
+      if (doc.exists) {
+        return (doc.data() as Map<String, dynamic>)['isUnlocked'] ?? false;
+      }
+      return false;
+    } catch (e) {
+      logger.e('❌ Error checking achievement status: $e');
+      return false;
+    }
+  }
 }
