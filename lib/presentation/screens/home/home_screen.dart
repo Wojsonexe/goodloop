@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:confetti/confetti.dart';
 import 'package:go_router/go_router.dart';
 import 'package:goodloop/data/models/task_model.dart';
+import 'package:goodloop/presentation/widgets/modern_bottom_nav.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../domain/providers/auth_provider.dart';
 import '../../../domain/providers/task_provider.dart';
@@ -282,39 +283,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ],
       ),
-
-      // Bottom Navigation
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 0,
-        onTap: (index) {
-          switch (index) {
-            case 0:
-              break;
-            case 1:
-              context.push('/achievements');
-              break;
-            case 2:
-              context.push('/feed');
-              break;
-            case 3:
-              context.push('/settings');
-              break;
-          }
-        },
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.emoji_events),
-            label: 'Achievements',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Feed'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
-      ),
+      bottomNavigationBar: const ModernBottomNav(currentIndex: 0),
     );
   }
 
