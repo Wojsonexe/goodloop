@@ -40,10 +40,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _completeTask(TaskModel task) async {
     final user = await ref.read(currentUserProvider.future);
-
     if (user == null) return;
+
+    // ✅ KROK 1: Sprawdź czy zadanie zostało już dzisiaj wykonane
+    final taskRepo = ref.read(taskRepositoryProvider);
+    final alreadyCompleted = await taskRepo.hasCompletedTaskToday(
+      user.id,
+      task.id,
+    );
+
+    if (alreadyCompleted) {
+      if (!mounted) return;
+
+      final timeLeft = taskRepo.getTimeUntilMidnight();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '✅ Already completed today!\n'
+            'Come back in $timeLeft for a new task',
+          ),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'OK',
+            textColor: Colors.white,
+            onPressed: () {},
+          ),
+        ),
+      );
+      return;
+    }
+
     if (!mounted) return;
 
+    // ✅ KROK 2: Pokaż dialog refleksji
     final reflection = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
@@ -80,20 +111,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     if (reflection == null) return;
 
-    // ✅ Użycie kontrolera do zaliczenia zadania globalnego
-    await ref
-        .read(taskControllerProvider(user.id).notifier)
-        .completeTask(task.id, task.points);
+    // ✅ KROK 3: Zapisz wykonane zadanie
+    try {
+      await ref
+          .read(taskControllerProvider(user.id).notifier)
+          .completeTask(task.id, task.points);
 
-    if (!mounted) return;
-    _confettiController.play();
+      if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('🎉 +${task.points} points! Amazing job!'),
-        backgroundColor: AppColors.success,
-      ),
-    );
+      // ✅ Wyczyść pole tekstowe dla następnego razu
+      _reflectionController.clear();
+
+      // ✅ Animacja confetti
+      _confettiController.play();
+
+      // ✅ Pokaż sukces
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('🎉 +${task.points} points! Amazing job!'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   @override
@@ -216,8 +263,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                         child: activeTaskAsync.when(
                           data: (tasks) {
-                            // ✅ Jeśli lista jest pusta (po odfiltrowaniu zrobionych),
-                            // oznacza to, że użytkownik wykonał już wszystko.
+                            // ✅ Jeśli lista jest pusta, użytkownik wykonał już wszystko
                             if (tasks.isEmpty) {
                               return _buildCompletedView(context);
                             }
@@ -247,7 +293,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   const SizedBox(height: 16),
                                   CustomProgressIndicator(
                                     current: user.completedTasks,
-                                    total: 100, // Tu możesz wstawić cel
+                                    total: 100,
                                   ),
                                 ],
                               ),
@@ -288,6 +334,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildCompletedView(BuildContext context) {
+    final taskRepo = ref.read(taskRepositoryProvider);
+    final timeLeft = taskRepo.getTimeUntilMidnight();
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -298,15 +347,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             const SizedBox(height: 24),
             Text(
               'Great Job!',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineMedium
+                  ?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               'You\'ve completed today\'s task',
               style: Theme.of(context).textTheme.bodyLarge,
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.primaryLight),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.schedule, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    'New task in $timeLeft',
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 32),
             CustomButton(
