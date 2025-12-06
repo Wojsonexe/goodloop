@@ -37,9 +37,13 @@ class NotificationService {
     tz.initializeTimeZones();
     try {
       final timezoneInfo = await FlutterTimezone.getLocalTimezone();
-      final String timeZoneName = timezoneInfo.identifier;
+      final String timeZoneName = timezoneInfo.toString();
       tz.setLocalLocation(tz.getLocation(timeZoneName));
       logger.i("✅ Timezone set to: $timeZoneName");
+
+      // 🐛 DEBUG: Log current time
+      final now = tz.TZDateTime.now(tz.local);
+      logger.i("🕐 Current local time: $now");
     } catch (e) {
       logger.e("❌ Timezone error: $e. Using Europe/Warsaw as fallback");
       tz.setLocalLocation(tz.getLocation('Europe/Warsaw'));
@@ -52,7 +56,6 @@ class NotificationService {
     await _requestPermissions();
     await _initializeLocalNotifications();
     await _configureFCM();
-
     await _restoreDailyReminder();
 
     logger.i('✅ Notification service initialized');
@@ -68,6 +71,11 @@ class NotificationService {
         final granted =
             await androidImplementation.requestNotificationsPermission();
         logger.i('📱 Android notification permission: $granted');
+
+        // 🐛 DEBUG: Request exact alarm permission
+        final exactAlarmGranted =
+            await androidImplementation.requestExactAlarmsPermission();
+        logger.i('⏰ Exact alarm permission: $exactAlarmGranted');
       }
     }
 
@@ -76,21 +84,9 @@ class NotificationService {
       badge: true,
       sound: true,
       provisional: false,
-      announcement: false,
-      carPlay: false,
-      criticalAlert: false,
     );
 
     logger.i('📱 FCM permission: ${settings.authorizationStatus}');
-
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      logger.i('✅ User granted permission');
-    } else if (settings.authorizationStatus ==
-        AuthorizationStatus.provisional) {
-      logger.w('⚠️ User granted provisional permission');
-    } else {
-      logger.e('❌ User declined permission');
-    }
   }
 
   Future<void> _initializeLocalNotifications() async {
@@ -123,18 +119,13 @@ class NotificationService {
       await _saveTokenToFirestore(token);
     }
 
-    _messaging.onTokenRefresh.listen((newToken) {
-      logger.i('📱 New FCM Token received');
-      _saveTokenToFirestore(newToken);
-    });
-
+    _messaging.onTokenRefresh.listen(_saveTokenToFirestore);
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
     FirebaseMessaging.onBackgroundMessage(_handleBackgroundMessage);
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationOpen);
 
     RemoteMessage? initialMessage = await _messaging.getInitialMessage();
     if (initialMessage != null) {
-      logger.i('📱 App opened from terminated state via notification');
       _handleNotificationOpen(initialMessage);
     }
   }
@@ -142,10 +133,7 @@ class NotificationService {
   Future<void> _saveTokenToFirestore(String token) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        logger.i('⚠️ No user logged in, skipping token save');
-        return;
-      }
+      if (user == null) return;
 
       String platformName = Platform.isAndroid ? 'android' : 'ios';
 
@@ -189,10 +177,7 @@ class NotificationService {
 
   void _navigateBasedOnPayload(Map<String, dynamic> data) {
     final context = navigatorKey.currentContext;
-    if (context == null) {
-      logger.w('⚠️ Navigator context not available');
-      return;
-    }
+    if (context == null) return;
 
     final type = data['type'] as String?;
     logger.i('📱 Navigating to: type=$type');
@@ -206,15 +191,6 @@ class NotificationService {
         break;
       case 'friend_request':
         Navigator.pushNamed(context, '/friends');
-        break;
-      case 'chat':
-        Navigator.pushNamed(context, '/chat');
-        break;
-      case 'challenge':
-        Navigator.pushNamed(context, '/daily-challenge');
-        break;
-      case 'feed':
-        Navigator.pushNamed(context, '/feed');
         break;
       default:
         Navigator.pushNamed(context, '/home');
@@ -244,7 +220,6 @@ class NotificationService {
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
-      sound: 'default',
     );
 
     const details = NotificationDetails(
@@ -261,26 +236,41 @@ class NotificationService {
     );
   }
 
+  // ✅ NAPRAWIONA FUNKCJA z pełnym debugowaniem
   Future<void> scheduleDailyReminder({
     required int hour,
     required int minute,
     String? customMessage,
   }) async {
-    logger.i(
-        '📱 Scheduling daily reminder for $hour:${minute.toString().padLeft(2, '0')}');
+    logger.i('📱 ========================================');
+    logger.i('📱 SCHEDULING DAILY REMINDER');
+    logger.i('📱 Time: $hour:${minute.toString().padLeft(2, '0')}');
+    logger.i('📱 ========================================');
 
     try {
+      // 1. Anuluj poprzednie
       await _localNotifications.cancel(_dailyReminderId);
+      logger.i('✅ Previous notification cancelled');
 
+      // 2. Zapisz ustawienia
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(_prefHourKey, hour);
       await prefs.setInt(_prefMinuteKey, minute);
       await prefs.setBool(_prefEnabledKey, true);
+      logger.i('✅ Settings saved to SharedPreferences');
 
+      // 3. Oblicz następne wystąpienie
       final scheduledDate = _nextInstanceOfTime(hour, minute);
 
-      logger.i('📅 Next notification: ${scheduledDate.toString()}');
+      // 🐛 DEBUG: Sprawdź obliczony czas
+      final now = tz.TZDateTime.now(tz.local);
+      final difference = scheduledDate.difference(now);
+      logger.i('🕐 Current time: $now');
+      logger.i('🕐 Scheduled time: $scheduledDate');
+      logger.i(
+          '⏰ Time until notification: ${difference.inHours}h ${difference.inMinutes % 60}m');
 
+      // 4. Zaplanuj powiadomienie
       await _localNotifications.zonedSchedule(
         _dailyReminderId,
         '🎯 Time for a good deed!',
@@ -312,9 +302,32 @@ class NotificationService {
       );
 
       logger.i('✅ Daily reminder scheduled successfully');
+
+      // 5. Verify scheduled notification
+      await _verifyScheduledNotification();
     } catch (e, stack) {
       logger.e('❌ Error scheduling reminder: $e', stackTrace: stack);
       rethrow;
+    }
+  }
+
+  // 🐛 DEBUG: Weryfikacja zaplanowanego powiadomienia
+  Future<void> _verifyScheduledNotification() async {
+    try {
+      final pending = await _localNotifications.pendingNotificationRequests();
+      logger.i('📋 Pending notifications: ${pending.length}');
+
+      for (var notification in pending) {
+        logger.i('  - ID: ${notification.id}');
+        logger.i('    Title: ${notification.title}');
+        logger.i('    Body: ${notification.body}');
+      }
+
+      if (pending.isEmpty) {
+        logger.e('⚠️ WARNING: No pending notifications found!');
+      }
+    } catch (e) {
+      logger.e('❌ Error verifying notifications: $e');
     }
   }
 
@@ -332,8 +345,10 @@ class NotificationService {
       0,
     );
 
+    // Jeśli ta godzina już minęła dzisiaj, zaplanuj na jutro
     if (scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
+      logger.i('⏭️ Time already passed today, scheduling for tomorrow');
     }
 
     return scheduledDate;
@@ -427,22 +442,6 @@ class NotificationService {
     );
   }
 
-  Future<void> notifyChatMessage(String senderName, String message) async {
-    await _showLocalNotification(
-      title: '💬 $senderName',
-      body: message,
-      payload: _encodePayload({'type': 'chat'}),
-    );
-  }
-
-  Future<void> notifyDailyChallenge(String challengeTitle) async {
-    await _showLocalNotification(
-      title: '🎲 Daily Challenge!',
-      body: challengeTitle,
-      payload: _encodePayload({'type': 'challenge'}),
-    );
-  }
-
   String _encodePayload(Map<String, dynamic> data) {
     try {
       return jsonEncode(data);
@@ -466,20 +465,20 @@ class NotificationService {
     logger.i('📱 All notifications cancelled');
   }
 
-  Future<void> cancel(int id) async {
-    await _localNotifications.cancel(id);
-    logger.i('📱 Notification $id cancelled');
-  }
-
   Future<List<PendingNotificationRequest>> getPendingNotifications() async {
     return await _localNotifications.pendingNotificationRequests();
   }
 
   Future<void> logScheduledNotifications() async {
     final pending = await getPendingNotifications();
-    logger.i('📋 Pending notifications: ${pending.length}');
+    logger.i('📋 ========================================');
+    logger.i('📋 SCHEDULED NOTIFICATIONS: ${pending.length}');
+    logger.i('📋 ========================================');
     for (var notification in pending) {
-      logger.i('  - ID: ${notification.id}, Title: ${notification.title}');
+      logger.i('  ID: ${notification.id}');
+      logger.i('  Title: ${notification.title}');
+      logger.i('  Body: ${notification.body}');
+      logger.i('  ---');
     }
   }
 }
